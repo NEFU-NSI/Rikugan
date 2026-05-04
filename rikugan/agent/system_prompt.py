@@ -10,8 +10,12 @@ from ..core.profile import IOC_FILTER_CATEGORIES
 from ..core.sanitize import sanitize_binary_context, sanitize_memory
 from .prompts.binja import BINJA_BASE_PROMPT
 from .prompts.ida import IDA_BASE_PROMPT
+from .prompts.translations import (
+    assemble_system_prompt_for_language,
+    get_prompts_for_language,
+)
 
-_PERSISTENT_MEMORY_CACHE: dict[str, tuple[tuple[int | None, int | None], str | None]] = {}
+_LANGUAGE_CACHE: dict[str, tuple[tuple[int | None, int | None], str | None]] = {}
 
 if TYPE_CHECKING:
     from ..core.profile import AnalysisProfile
@@ -23,17 +27,32 @@ _BASE_PROMPT = IDA_BASE_PROMPT  # backward compat alias
 _MAX_MEMORY_LINES = 200
 
 
-def _load_persistent_memory(idb_dir: str = "") -> str | None:
+def _load_persistent_memory(idb_dir: str = "", language: str = "en") -> str | None:
     """Load RIKUGAN.md from the IDB/BNDB directory (first 200 lines).
 
     The file acts as persistent cross-session memory for the agent.
+    When language is Chinese, also try to load RIKUGAN_ZH.md first.
     """
     if not idb_dir:
         return None
 
+    # Try language-specific memory file first
+    if language == "zh":
+        zh_md_path = os.path.join(idb_dir, "RIKUGAN_ZH.md")
+        if os.path.isfile(zh_md_path):
+            try:
+                with open(zh_md_path, encoding="utf-8") as f:
+                    content = f.read().strip() or None
+                if content:
+                    log_debug(f"Loaded persistent memory from {zh_md_path}")
+                    return content
+            except OSError as e:
+                log_debug(f"Failed to load RIKUGAN_ZH.md: {e}")
+
+    # Fall back to standard RIKUGAN.md
     md_path = os.path.join(idb_dir, "RIKUGAN.md")
     if not os.path.isfile(md_path):
-        _PERSISTENT_MEMORY_CACHE.pop(md_path, None)
+        _LANGUAGE_CACHE.pop(md_path, None)
         return None
 
     try:
@@ -44,10 +63,10 @@ def _load_persistent_memory(idb_dir: str = "") -> str | None:
         )
     except OSError as e:
         log_debug(f"Failed to stat RIKUGAN.md: {e}")
-        _PERSISTENT_MEMORY_CACHE.pop(md_path, None)
+        _LANGUAGE_CACHE.pop(md_path, None)
         return None
 
-    cached = _PERSISTENT_MEMORY_CACHE.get(md_path)
+    cached = _LANGUAGE_CACHE.get(md_path)
     if cached is not None and cached[0] == version:
         return cached[1]
 
@@ -60,13 +79,13 @@ def _load_persistent_memory(idb_dir: str = "") -> str | None:
                     break
                 lines.append(line)
         content = "".join(lines).strip() or None
-        _PERSISTENT_MEMORY_CACHE[md_path] = (version, content)
+        _LANGUAGE_CACHE[md_path] = (version, content)
         if content:
             log_debug(f"Loaded persistent memory from {md_path} ({len(lines)} lines)")
             return content
     except OSError as e:
         log_debug(f"Failed to load RIKUGAN.md: {e}")
-        _PERSISTENT_MEMORY_CACHE.pop(md_path, None)
+        _LANGUAGE_CACHE.pop(md_path, None)
 
     return None
 
@@ -81,16 +100,46 @@ def build_system_prompt(
     skill_summary: str | None = None,
     idb_dir: str | None = None,
     profile: AnalysisProfile | None = None,
+    language: str = "en",
 ) -> str:
-    """Build the full system prompt with optional binary context."""
-    base_prompt = _HOST_PROMPTS.get(host_name, IDA_BASE_PROMPT)
+    """Build the full system prompt with optional binary context.
+
+    Args:
+        host_name: Host application name ("IDA Pro" or "Binary Ninja").
+        binary_info: Sanitized binary metadata.
+        current_function: Current function name/address.
+        current_address: Current cursor address.
+        extra_context: Additional context to inject.
+        tool_names: List of available tool names.
+        skill_summary: Summary of active skills.
+        idb_dir: Directory containing the IDB/BNDB file.
+        profile: Analysis profile configuration.
+        language: Language code ("en" or "zh"). Defaults to English.
+    """
+    # Check if we should use translated prompts
+    host_key = "ida" if "IDA" in host_name else "binja"
+    
+    if language == "zh":
+        # Use translated prompts from translations module
+        lang_prompts = get_prompts_for_language(language)
+        intro = lang_prompts["intro"][host_key]
+        tool_usage = lang_prompts["tool_usage"][host_key]
+        capabilities = lang_prompts["capabilities"][host_key]
+        base_prompt = assemble_system_prompt_for_language(
+            intro, tool_usage, capabilities, language
+        )
+    else:
+        # Use original English prompts
+        base_prompt = _HOST_PROMPTS.get(host_name, IDA_BASE_PROMPT)
+    
     parts = [base_prompt]
 
     # Persistent memory — loaded early so it's part of the cached prefix.
     # Sanitized to prevent poisoned memory files from injecting instructions.
-    memory = _load_persistent_memory(idb_dir or "")
+    memory = _load_persistent_memory(idb_dir or "", language)
     if memory:
-        parts.append(f"\n## Persistent Memory (RIKUGAN.md)\n{sanitize_memory(memory)}")
+        memory_label = "持久记忆 (RIKUGAN.md)" if language == "zh" else "Persistent Memory (RIKUGAN.md)"
+        parts.append(f"\n## {memory_label}\n{sanitize_memory(memory)}")
 
     # Binary context is untrusted — function names, strings, and metadata
     # originate from the analyzed binary and could contain adversarial content.
@@ -99,23 +148,30 @@ def build_system_prompt(
         log_debug("Profile: hiding binary metadata from system prompt")
     else:
         if binary_info:
-            parts.append(f"\n## Current Binary\n{sanitize_binary_context(binary_info, 'binary_info')}")
+            binary_label = "当前二进制文件" if language == "zh" else "Current Binary"
+            parts.append(f"\n## {binary_label}\n{sanitize_binary_context(binary_info, 'binary_info')}")
 
         if current_address:
+            position_label = "当前位置" if language == "zh" else "Current Position"
+            address_label = "地址" if language == "zh" else "Address"
             parts.append(
-                f"\n## Current Position\nAddress: {sanitize_binary_context(current_address, 'cursor_address')}"
+                f"\n## {position_label}\n{address_label}: {sanitize_binary_context(current_address, 'cursor_address')}"
             )
             if current_function:
-                parts.append(f"Function: {sanitize_binary_context(current_function, 'cursor_function')}")
+                func_label = "函数" if language == "zh" else "Function"
+                parts.append(f"{func_label}: {sanitize_binary_context(current_function, 'cursor_function')}")
 
     if tool_names:
-        parts.append(f"\n## Available Tools\n{', '.join(tool_names)}")
+        tools_label = "可用工具" if language == "zh" else "Available Tools"
+        parts.append(f"\n## {tools_label}\n{', '.join(tool_names)}")
 
     if skill_summary:
-        parts.append(f"\n## Skills\n{skill_summary}")
+        skills_label = "技能" if language == "zh" else "Skills"
+        parts.append(f"\n## {skills_label}\n{skill_summary}")
 
     if extra_context:
-        parts.append(f"\n## Additional Context\n{extra_context}")
+        ctx_label = "附加上下文" if language == "zh" else "Additional Context"
+        parts.append(f"\n## {ctx_label}\n{extra_context}")
 
     # Profile-driven prompt additions
     if profile:

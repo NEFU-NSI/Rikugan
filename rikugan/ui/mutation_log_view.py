@@ -17,6 +17,8 @@ from .qt_compat import (
     Signal,
 )
 
+from .i18n import t
+
 if TYPE_CHECKING:
     from ..agent.mutation import MutationRecord
 
@@ -82,7 +84,7 @@ class MutationLogPanel(QFrame):
         header_layout = QHBoxLayout(self._header)
         header_layout.setContentsMargins(12, 8, 12, 8)
 
-        self._title = QLabel("Mutation Log")
+        self._title = QLabel(t("mutation.title"))
         self._title.setStyleSheet("color: #d4d4d4; font-weight: bold; font-size: 12px;")
         header_layout.addWidget(self._title)
 
@@ -92,7 +94,7 @@ class MutationLogPanel(QFrame):
 
         header_layout.addStretch()
 
-        self._undo_btn = QPushButton("Undo Last")
+        self._undo_btn = QPushButton(t("mutation.undo_last"))
         self._undo_btn.setStyleSheet(
             "QPushButton { color: #4ec9b0; background: #2d2d2d; "
             "border: 1px solid #4ec9b0; border-radius: 3px; "
@@ -150,5 +152,5 @@ class MutationLogPanel(QFrame):
 
     def _update_count(self) -> None:
         n = len(self._entries)
-        self._count_label.setText(f"{n} mutation{'s' if n != 1 else ''}")
+        self._count_label.setText(t("mutation.count", n=n))
         self._undo_btn.setEnabled(n > 0 and any(e.record.reversible for e in self._entries))

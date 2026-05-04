@@ -21,6 +21,7 @@ from ...ui.action_handlers import (
     handle_vuln_audit,
     handle_xref_analysis,
 )
+from ...ui.i18n import t
 
 try:
     ida_funcs = importlib.import_module("ida_funcs")
@@ -163,83 +164,83 @@ if _HAS_IDA:
     _ACTION_DEFS: list[tuple[str, str, Callable, bool, str, str, set[str]]] = [
         (
             "rikugan:send_to",
-            "Send to Rikugan",
+            t("action.send_to_label"),
             _handle_send_to,
             False,
             "Ctrl+Shift+A",
-            "Send selection or address to Rikugan input",
+            t("action.send_to_tooltip"),
             {"disasm", "pseudo"},
         ),
         (
             "rikugan:explain",
-            "Explain this",
+            t("action.explain_label"),
             _handle_explain,
             True,
             "",
-            "Explain the current function with Rikugan",
+            t("action.explain_tooltip"),
             {"disasm", "pseudo"},
         ),
         (
             "rikugan:rename",
-            "Rename with Rikugan",
+            t("action.rename_label"),
             _handle_rename,
             True,
             "",
-            "Analyze and rename the current function",
+            t("action.rename_tooltip"),
             {"disasm", "pseudo"},
         ),
         (
             "rikugan:deobfuscate",
-            "Deobfuscate with Rikugan",
+            t("action.deobfuscate_label"),
             _handle_deobfuscate,
             True,
             "",
-            "Deobfuscate the current function",
+            t("action.deobfuscate_tooltip"),
             {"disasm", "pseudo"},
         ),
         (
             "rikugan:vuln_audit",
-            "Find vulnerabilities",
+            t("action.vuln_audit_label"),
             _handle_vuln_audit,
             True,
             "",
-            "Audit the current function for security bugs",
+            t("action.vuln_audit_tooltip"),
             {"disasm", "pseudo"},
         ),
         (
             "rikugan:suggest_types",
-            "Suggest types",
+            t("action.suggest_types_label"),
             _handle_suggest_types,
             True,
             "",
-            "Infer and apply types for the current function",
+            t("action.suggest_types_tooltip"),
             {"disasm", "pseudo"},
         ),
         (
             "rikugan:annotate",
-            "Annotate function",
+            t("action.annotate_label"),
             _handle_annotate,
             True,
             "",
-            "Add comments to the current function",
+            t("action.annotate_tooltip"),
             {"pseudo"},
         ),
         (
             "rikugan:clean_mcode",
-            "Clean microcode",
+            t("action.clean_mcode_label"),
             _handle_clean_mcode,
             True,
             "",
-            "Clean the microcode for the current function",
+            t("action.clean_mcode_tooltip"),
             {"pseudo"},
         ),
         (
             "rikugan:xref_analysis",
-            "Xref analysis",
+            t("action.xref_label"),
             _handle_xref_analysis,
             True,
             "",
-            "Deep cross-reference analysis on the current function",
+            t("action.xref_tooltip"),
             {"disasm", "pseudo"},
         ),
     ]
@@ -294,10 +295,10 @@ if _HAS_IDA:
             idaapi.register_action(
                 idaapi.action_desc_t(
                     "rikugan:open_tools",
-                    "Open Tools",
+                    t("action.open_tools_label"),
                     _OpenToolsAction(self._get_panel),
                     "",
-                    "Open the Rikugan Tools panel",
+                    t("action.open_tools_tooltip"),
                 )
             )
             idaapi.attach_action_to_menu(
@@ -310,10 +311,10 @@ if _HAS_IDA:
             idaapi.register_action(
                 idaapi.action_desc_t(
                     "rikugan:send_to_bulk_rename",
-                    "Send to Bulk Rename",
+                    t("action.send_to_bulk_rename_label"),
                     _SendToBulkRenameAction(self._get_panel),
                     "",
-                    "Send function to Rikugan Bulk Renamer",
+                    t("action.send_to_bulk_rename_tooltip"),
                 )
             )
 

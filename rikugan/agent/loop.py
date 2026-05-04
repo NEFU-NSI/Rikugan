@@ -498,6 +498,9 @@ class AgentLoop:
         if self.session.idb_path:
             idb_dir = os.path.dirname(self.session.idb_path)
 
+        language = getattr(self.config, "language", "en") or "en"
+        log_debug(f"Building system prompt: config={id(self.config)}, language={language!r}")
+
         return build_system_prompt(
             host_name=self.host_name,
             binary_info=binary_info,
@@ -507,6 +510,7 @@ class AgentLoop:
             skill_summary=skill_summary,
             idb_dir=idb_dir,
             profile=profile,
+            language=language,
         )
 
     def _resolve_skill(self, user_message: str) -> tuple:

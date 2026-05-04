@@ -23,6 +23,8 @@ from .qt_compat import (
     qt_flags,
 )
 from .styles import host_stylesheet, use_native_host_theme
+from .i18n import t
+
 
 _MAX_ARGS_DISPLAY = 2000
 _MAX_RESULT_DISPLAY = 3000
@@ -1171,7 +1173,7 @@ class ToolApprovalWidget(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
 
-        self._header = QLabel("Approve execute_python?")
+        self._header = QLabel(t("execute_python.approve_header"))
         self._header.setStyleSheet(
             host_stylesheet(
                 "color: #dcdcaa; font-weight: bold; font-size: 11px;",
@@ -1183,7 +1185,7 @@ class ToolApprovalWidget(QFrame):
         code = self._extract_code(args_text)
         code_lines = code.strip().splitlines() if code.strip() else []
 
-        self._info = QLabel(f"Python code - {len(code_lines)} line{'s' if len(code_lines) != 1 else ''}")
+        self._info = QLabel(t("execute_python.code_info", lines=len(code_lines)))
         self._info.setStyleSheet(
             host_stylesheet(
                 "color: #808080; font-size: 10px;",
@@ -1245,7 +1247,7 @@ class ToolApprovalWidget(QFrame):
         btn_layout.setSpacing(8)
 
         self._allow_btn = QToolButton()
-        self._allow_btn.setText("  Allow  ")
+        self._allow_btn.setText("  " + t("chat.allow") + "  ")
         allow_css = (
             "QToolButton { background: #2ea043; color: #ffffff; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; font-weight: bold; }"
@@ -1256,7 +1258,7 @@ class ToolApprovalWidget(QFrame):
         btn_layout.addWidget(self._allow_btn)
 
         self._always_btn = QToolButton()
-        self._always_btn.setText("  Always Allow  ")
+        self._always_btn.setText("  " + t("execute_python.always_allow") + "  ")
         always_css = (
             "QToolButton { background: #1a5c2d; color: #ffffff; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; font-weight: bold; }"
@@ -1267,7 +1269,7 @@ class ToolApprovalWidget(QFrame):
         btn_layout.addWidget(self._always_btn)
 
         self._deny_btn = QToolButton()
-        self._deny_btn.setText("  Deny  ")
+        self._deny_btn.setText("  " + t("chat.deny") + "  ")
         deny_css = (
             "QToolButton { background: #c42b1c; color: #ffffff; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; font-weight: bold; }"
@@ -1287,7 +1289,7 @@ class ToolApprovalWidget(QFrame):
 
     def _on_allow(self):
         self._disable_buttons()
-        self._allow_btn.setText("  Allowed  ")
+        self._allow_btn.setText("  " + t("execute_python.allowed") + "  ")
         allowed_css = (
             "QToolButton { background: #1a5c2d; color: #808080; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; }"
@@ -1298,7 +1300,7 @@ class ToolApprovalWidget(QFrame):
 
     def _on_always_allow(self):
         self._disable_buttons()
-        self._always_btn.setText("  Always Allowed  ")
+        self._always_btn.setText("  " + t("execute_python.always_allowed") + "  ")
         always_allowed_css = (
             "QToolButton { background: #1a5c2d; color: #808080; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; }"
@@ -1309,7 +1311,7 @@ class ToolApprovalWidget(QFrame):
 
     def _on_deny(self):
         self._disable_buttons()
-        self._deny_btn.setText("  Denied  ")
+        self._deny_btn.setText("  " + t("execute_python.denied") + "  ")
         denied_css = (
             "QToolButton { background: #6e1a12; color: #808080; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; }"

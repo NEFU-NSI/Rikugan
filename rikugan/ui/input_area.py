@@ -13,6 +13,7 @@ from .qt_compat import (
     QWidget,
 )
 from .styles import build_input_area_stylesheet, host_stylesheet, use_native_host_theme
+from .i18n import t
 
 
 class _SkillPopup(QFrame):
@@ -173,9 +174,9 @@ class InputArea(QPlainTextEdit):
         self._enabled = enabled
         self.setReadOnly(not enabled)
         if enabled:
-            self.setPlaceholderText("Ask about this binary... (/ for skills, /modify to patch)")
+            self.setPlaceholderText(t("chat.input_placeholder.ask"))
         else:
-            self.setPlaceholderText("Rikugan is thinking...")
+            self.setPlaceholderText(t("agent.running"))
 
     def _apply_theme(self) -> None:
         """Apply host-aware styling to the text editor."""

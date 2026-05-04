@@ -14,6 +14,7 @@ from .qt_compat import (
     QWidget,
 )
 from .styles import maybe_host_stylesheet
+from .i18n import t
 
 _HEADER_STYLE = "color: #d4d4d4; font-weight: bold; font-size: 12px;"
 
@@ -58,7 +59,7 @@ class ToolsPanel(QWidget):
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
         self.setObjectName("tools_panel")
-        self.setWindowTitle("Rikugan Tools")
+        self.setWindowTitle(t("settings.title"))
         self.setStyleSheet(maybe_host_stylesheet(_PANEL_STYLE))
         # No minimum size — this widget is embedded in IDA dockable forms
         # and Binary Ninja sidebars, which can be any size.
@@ -85,15 +86,15 @@ class ToolsPanel(QWidget):
         self._tabs.setObjectName("tools_tabs")
 
         # Placeholder tabs
-        self._renamer_placeholder = QLabel("Not loaded")
+        self._renamer_placeholder = QLabel(t("tools.not_loaded"))
         self._renamer_placeholder.setStyleSheet(maybe_host_stylesheet("color: #808080; padding: 20px;"))
         self._renamer_placeholder.setWordWrap(True)
-        self._tabs.addTab(self._renamer_placeholder, "Renamer")
+        self._tabs.addTab(self._renamer_placeholder, t("tools.renamer_tab"))
 
-        self._agents_placeholder = QLabel("Not loaded")
+        self._agents_placeholder = QLabel(t("tools.not_loaded"))
         self._agents_placeholder.setStyleSheet(maybe_host_stylesheet("color: #808080; padding: 20px;"))
         self._agents_placeholder.setWordWrap(True)
-        self._tabs.addTab(self._agents_placeholder, "Agents")
+        self._tabs.addTab(self._agents_placeholder, t("tools.agents_tab"))
 
         main_layout.addWidget(self._tabs)
 
@@ -107,11 +108,11 @@ class ToolsPanel(QWidget):
 
     def set_renamer_widget(self, widget: QWidget) -> None:
         """Replace the Renamer tab content."""
-        self._replace_tab(0, widget, "Renamer")
+        self._replace_tab(0, widget, t("tools.renamer_tab"))
 
     def set_agents_widget(self, widget: QWidget) -> None:
         """Replace the Agents tab content."""
-        self._replace_tab(1, widget, "Agents")
+        self._replace_tab(1, widget, t("tools.agents_tab"))
 
     def hide_header(self) -> None:
         """Hide the title bar (used when embedded in a dockable form)."""

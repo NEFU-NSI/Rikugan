@@ -72,6 +72,7 @@ class SessionControllerBase:
 
         self._runner: BackgroundAgentRunner | None = None
         self._pending_messages: list[str] = []
+        self._last_language: str = getattr(config, "language", "en") or "en"
 
     def _initialize_runtime(self) -> None:
         """Load heavy runtime components off the UI path."""
@@ -424,6 +425,16 @@ class SessionControllerBase:
         for session in self._sessions.values():
             session.provider_name = self.config.provider.name
             session.model_name = self.config.provider.model
+
+        # If language changed, cancel the current agent run so the next
+        # message rebuilds the system prompt with the new language.
+        if hasattr(self, "_last_language"):
+            if self._last_language != self.config.language:
+                log_debug(f"Language changed from {self._last_language} to {self.config.language}, cancelling agent")
+                if self._runner:
+                    self._runner.cancel()
+                    self._runner = None
+        self._last_language = self.config.language
 
     def reload_mcp(self) -> None:
         """Reload MCP config and restart servers in the background.

@@ -21,6 +21,8 @@ from .qt_compat import (
     qt_flags,
 )
 from .styles import host_stylesheet
+from .i18n import t, get_thinking_phrases
+
 
 _THINKING_PHRASES = [
     "analyzing binary structure...",
@@ -188,7 +190,7 @@ class UserMessageWidget(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
 
-        self._role_label = QLabel("You")
+        self._role_label = QLabel(t("message.you"))
         self._role_label.setStyleSheet(
             host_stylesheet(
                 f"color: {_USER_ROLE}; font-weight: bold; font-size: 11px;",
@@ -292,7 +294,7 @@ class _ThinkingBlock(QFrame):
         header.setContentsMargins(0, 0, 0, 0)
         header.setSpacing(4)
         header.addWidget(self._toggle)
-        self._header_label = QLabel("Thinking")
+        self._header_label = QLabel(t("message.thinking"))
         self._header_label.setStyleSheet(
             host_stylesheet(
                 f"color: {_MUTED_TEXT}; font-size: 11px; font-style: italic;",
@@ -330,7 +332,7 @@ class _ThinkingBlock(QFrame):
 
     def set_thinking(self, text: str, in_progress: bool = False) -> None:
         self._content.setText(md_to_html(text, self))
-        label = "Thinking\u2026" if in_progress else "Thinking"
+        label = t("message.thinking_progress") if in_progress else t("message.thinking")
         self._header_label.setText(label)
         self.show()
 
@@ -355,7 +357,7 @@ class AssistantMessageWidget(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
 
-        self._role_label = QLabel("Rikugan")
+        self._role_label = QLabel(t("message.rikugan"))
         self._role_label.setStyleSheet(
             host_stylesheet(
                 f"color: {_ASSISTANT_ROLE}; font-weight: bold; font-size: 11px;",
@@ -438,7 +440,9 @@ class ThinkingWidget(QFrame):
                 object_name="message_thinking",
             )
         )
-        self._phrase_idx = random.randint(0, len(_THINKING_PHRASES) - 1)
+
+        self._phrases = get_thinking_phrases()
+        self._phrase_idx = random.randint(0, len(self._phrases) - 1)
         self._star_idx = 0
 
         layout = QHBoxLayout(self)
@@ -446,16 +450,10 @@ class ThinkingWidget(QFrame):
         layout.setSpacing(6)
 
         self._star_label = QLabel(self._STAR_FRAMES[0])
-        self._star_label.setStyleSheet(
-            host_stylesheet(
-                "color: #dcdcaa; font-size: 14px;",
-                f"color: #dcdcaa; {_native_text_style(size=14)}",
-            )
-        )
         self._star_label.setFixedWidth(18)
         layout.addWidget(self._star_label)
 
-        self._phrase_label = QLabel(_THINKING_PHRASES[self._phrase_idx])
+        self._phrase_label = QLabel(self._phrases[self._phrase_idx])
         self._phrase_label.setStyleSheet(
             host_stylesheet(
                 "color: #808080; font-style: italic; font-size: 12px;",
@@ -477,8 +475,8 @@ class ThinkingWidget(QFrame):
         self._star_label.setText(self._STAR_FRAMES[self._star_idx])
 
         if self._star_idx == 0:
-            self._phrase_idx = (self._phrase_idx + 1) % len(_THINKING_PHRASES)
-            self._phrase_label.setText(_THINKING_PHRASES[self._phrase_idx])
+            self._phrase_idx = (self._phrase_idx + 1) % len(self._phrases)
+            self._phrase_label.setText(self._phrases[self._phrase_idx])
 
     def stop(self) -> None:
         self._stopped = True
@@ -512,7 +510,7 @@ class QueuedMessageWidget(QFrame):
 
         content_layout = QVBoxLayout()
 
-        self._role_label = QLabel("You")
+        self._role_label = QLabel(t("message.you"))
         self._role_label.setStyleSheet(
             host_stylesheet(
                 f"color: {_USER_ROLE}; font-weight: bold; font-size: 11px;",
@@ -539,7 +537,7 @@ class QueuedMessageWidget(QFrame):
 
         layout.addLayout(content_layout, 1)
 
-        self._badge = QLabel("[queued]")
+        self._badge = QLabel(t("agent.queued"))
         self._badge.setStyleSheet(
             host_stylesheet(
                 f"color: {_MUTED_TEXT}; font-size: 10px; font-style: italic;",
@@ -570,7 +568,7 @@ class UserQuestionWidget(QFrame):
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(6)
 
-        self._header = QLabel("Rikugan asks:")
+        self._header = QLabel(t("message.question_header"))
         self._header.setStyleSheet(
             host_stylesheet(
                 "color: #dcdcaa; font-weight: bold; font-size: 11px;",
@@ -894,7 +892,7 @@ class ErrorMessageWidget(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
 
-        self._header = QLabel("Error")
+        self._header = QLabel(t("message.error_header"))
         self._header.setStyleSheet(
             host_stylesheet(
                 "color: #f44747; font-weight: bold; font-size: 11px;",

@@ -11,6 +11,7 @@ from .qt_compat import (
     QWidget,
 )
 from .styles import maybe_host_stylesheet
+from .i18n import t
 
 
 class PlanStepWidget(QFrame):
@@ -78,7 +79,7 @@ class PlanView(QFrame):
         layout.setSpacing(4)
 
         # Header
-        self._header = QLabel("Plan")
+        self._header = QLabel(t("plan.header"))
         self._header.setStyleSheet(maybe_host_stylesheet("color: #569cd6; font-weight: bold; font-size: 13px;"))
         layout.addWidget(self._header)
 
@@ -89,7 +90,7 @@ class PlanView(QFrame):
         # Approve/reject buttons
         btn_layout = QHBoxLayout()
 
-        self._approve_btn = QPushButton("Approve & Execute")
+        self._approve_btn = QPushButton(t("plan.approve_execute"))
         self._approve_btn.setStyleSheet(
             maybe_host_stylesheet(
                 "QPushButton { background: #2ea043; color: white; border: none; "
@@ -100,7 +101,7 @@ class PlanView(QFrame):
         self._approve_btn.clicked.connect(self._fire_approved)
         btn_layout.addWidget(self._approve_btn)
 
-        self._reject_btn = QPushButton("Reject")
+        self._reject_btn = QPushButton(t("plan.reject"))
         self._reject_btn.setStyleSheet(
             maybe_host_stylesheet(
                 "QPushButton { background: #c72e2e; color: white; border: none; "

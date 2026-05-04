@@ -32,6 +32,7 @@ from ..qt_compat import (
     QWidget,
 )
 from ..styles import maybe_host_stylesheet
+from ..i18n import t
 
 if TYPE_CHECKING:
     from ..settings_service import SettingsService
@@ -236,7 +237,7 @@ class ProfilesTab(QWidget):
 
     def _build_denied_tools_section(self) -> QGroupBox:
         """Build the denied tools group with category checkboxes or text fallback."""
-        tools_group = QGroupBox("Denied Tools")
+        tools_group = QGroupBox(t("profile.denied_tools"))
         tools_group.setStyleSheet(_GROUP_STYLE)
         tools_lay = QVBoxLayout(tools_group)
         tools_lay.setContentsMargins(10, 20, 10, 8)
@@ -486,7 +487,7 @@ class ProfilesTab(QWidget):
             return
         name, desc = result
         if name in BUILTIN_PROFILES or name in self._custom_profiles:
-            QMessageBox.warning(self, "Error", f"Profile '{name}' already exists.")
+            QMessageBox.warning(self, t("profile.error_title"), f"{t('profile.name_exists', name=name)}")
             return
         p = AnalysisProfile(name=name, description=desc)
         self._custom_profiles[name] = p.to_dict()
@@ -504,7 +505,7 @@ class ProfilesTab(QWidget):
             return
         name, desc = result
         if name in BUILTIN_PROFILES or name in self._custom_profiles:
-            QMessageBox.warning(self, "Error", f"Profile '{name}' already exists.")
+            QMessageBox.warning(self, t("profile.error_title"), f"{t('profile.name_exists', name=name)}")
             return
         self._save_current_to_working_copy()
         profile = get_profile(current, self._custom_profiles)
@@ -571,11 +572,11 @@ class ProfilesTab(QWidget):
             n = name_edit.text().strip().lower().replace(" ", "-")
             d = desc_edit.toPlainText().strip()
             if not n:
-                error_label.setText("Name is required")
+                error_label.setText(t("profile.name_required"))
                 error_label.show()
                 return
             if not d:
-                error_label.setText("Description is required \u2014 it helps the AI agent follow your constraints")
+                error_label.setText(t("profile.description_required"))
                 error_label.show()
                 return
             name_edit.setText(n)

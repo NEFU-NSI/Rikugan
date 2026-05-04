@@ -50,6 +50,8 @@ from .styles import (
 )
 from .tool_widgets import _SharedSpinnerTimer
 from .tools_panel import ToolsPanel
+from .i18n import t
+
 
 _TOOL_RESULT_TRUNCATE_CHARS = 2000
 _SMALL_BTN_STYLE = (
@@ -391,8 +393,8 @@ class RikuganPanelCore(QWidget):
         self._mode_bar.setStyleSheet("" if self._use_native_host_theme else self._MODE_BAR_STYLE)
         self._mode_bar.setExpanding(False)
         self._mode_bar.setDrawBase(False)
-        self._mode_bar.addTab("Chat")
-        self._mode_bar.addTab("Tools")
+        self._mode_bar.addTab(t("chat.mode_chat"))
+        self._mode_bar.addTab(t("tools.title"))
         self._mode_bar.currentChanged.connect(self._on_mode_changed)
         if self._tools_form_factory is not None:
             self._mode_bar.setVisible(False)
@@ -558,7 +560,7 @@ class RikuganPanelCore(QWidget):
         self._mutations_btn.setVisible(False)  # shown when first mutation is recorded
         btn_layout.addWidget(self._mutations_btn)
 
-        self._tools_btn = QPushButton("Tools")
+        self._tools_btn = QPushButton(t("tools.title"))
         self._tools_btn.setFixedWidth(64)
         self._tools_btn.setStyleSheet(maybe_host_stylesheet(_SMALL_BTN_STYLE))
         self._tools_btn.setCheckable(True)

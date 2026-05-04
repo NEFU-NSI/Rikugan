@@ -77,6 +77,9 @@ class RikuganConfig:
     bulk_renamer_batch_size: int = 10
     bulk_renamer_max_concurrent: int = 3
 
+    # UI language: "en" (English, default) or "zh" (中文)
+    language: str = "en"
+
     # API key encryption
     encrypt_api_keys: bool = False
     _encryption_block: dict = field(default_factory=dict, repr=False)
@@ -199,6 +202,7 @@ class RikuganConfig:
             "bulk_renamer_max_concurrent",
             "oauth_consent_accepted",
             "encrypt_api_keys",
+            "language",
         ):
             if k in data:
                 setattr(self, k, data[k])

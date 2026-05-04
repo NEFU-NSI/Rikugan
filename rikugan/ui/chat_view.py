@@ -29,12 +29,11 @@ from .qt_compat import (
     QWidget,
 )
 from .tool_widgets import ToolApprovalWidget, ToolCallWidget, ToolGroupWidget
+from .i18n import t
 
 _THINKING_MIN_DISPLAY_MS = 500
 
 # Collapse consecutive tool runs once they reach this many calls.
-# A single tool call is shown inline with its name visible;
-# only 2+ consecutive calls get grouped into a collapsible widget.
 _TOOL_GROUP_MIN_CALLS = 2
 
 
@@ -251,7 +250,7 @@ class ChatView(QScrollArea):
         elif etype == TurnEventType.ERROR:
             self._hide_thinking()
             self._reset_tool_run()
-            self._insert_widget(ErrorMessageWidget(event.error or "Unknown error", parent=self._container))
+            self._insert_widget(ErrorMessageWidget(t("agent.error", error=event.error or t("agent.unknown_error")), parent=self._container))
             self._scroll_to_bottom()
 
     def _handle_text_event(self, event: TurnEvent) -> None:
@@ -322,7 +321,7 @@ class ChatView(QScrollArea):
         elif etype == TurnEventType.CANCELLED:
             self._hide_thinking()
             self._reset_tool_run()
-            self._insert_widget(ErrorMessageWidget("Cancelled by user", parent=self._container))
+            self._insert_widget(ErrorMessageWidget(t("agent.cancelled"), parent=self._container))
             self._scroll_to_bottom()
 
     def _handle_plan_event(self, event: TurnEvent) -> None:

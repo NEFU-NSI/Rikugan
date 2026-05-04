@@ -16,6 +16,7 @@ from ...ui.action_handlers import (
     handle_vuln_audit,
     handle_xref_analysis,
 )
+from ...ui.i18n import t
 
 
 def build_context(
@@ -49,57 +50,71 @@ def handle_clean_il(ctx: dict[str, Any]) -> str:
 def handle_smart_patch(ctx: dict[str, Any]) -> str:
     name = ctx["func_name"] or f"sub_{ctx['ea']:x}"
     ea = ctx["func_ea"] or ctx["ea"]
-    return f"/smart-patch-binja Patch function {name} at 0x{ea:x}.\nDesired behavior: "
+    return _t(
+        "action.smart_patch",
+        _name=name,
+        _ea=ea,
+        _fallback=f"/smart-patch-binja Patch function {name} at 0x{ea:x}.\nDesired behavior: ",
+    )
+
+
+def _t(key: str, **kwargs) -> str:
+    """Translate a key using the current UI language."""
+    try:
+        from .i18n import t as _t_func
+        return _t_func(key, **kwargs)
+    except Exception:
+        return kwargs.get("_fallback", key)
 
 
 ACTION_DEFS: tuple[tuple[str, str, Callable[[dict[str, Any]], str], bool], ...] = (
     (
-        "Send to Rikugan",
-        "Send selection or address to Rikugan input",
+        t("action.send_to_label"),
+        t("action.send_to_tooltip"),
         handle_send_to,
         False,
     ),
-    ("Explain this", "Explain the current function with Rikugan", handle_explain, True),
+    (t("action.explain_label"), t("action.explain_tooltip"), handle_explain, True),
     (
-        "Rename with Rikugan",
-        "Analyze and rename the current function",
+        t("action.rename_label"),
+        t("action.rename_tooltip"),
         handle_rename,
         True,
     ),
     (
-        "Deobfuscate with Rikugan",
-        "Deobfuscate the current function",
+        t("action.deobfuscate_label"),
+        t("action.deobfuscate_tooltip"),
         handle_deobfuscate_bn,
         True,
     ),
     (
-        "Find vulnerabilities",
-        "Audit the current function for security bugs",
+        t("action.vuln_audit_label"),
+        t("action.vuln_audit_tooltip"),
         handle_vuln_audit,
         True,
     ),
     (
-        "Suggest types",
-        "Infer and apply types for the current function",
+        t("action.suggest_types_label"),
+        t("action.suggest_types_tooltip"),
         handle_suggest_types,
         True,
     ),
     (
-        "Annotate function",
-        "Add comments to the current function",
+        t("action.annotate_label"),
+        t("action.annotate_tooltip"),
         handle_annotate,
         True,
     ),
-    ("Clean IL", "Clean IR IL for the current function", handle_clean_il, True),
+    (t("action.clean_il_label"), t("action.clean_il_tooltip"), handle_clean_il, True),
     (
-        "Xref analysis",
-        "Deep cross-reference analysis on the current function",
+        t("action.xref_label"),
+        t("action.xref_tooltip"),
         handle_xref_analysis,
         True,
     ),
     (
-        "Smart Patch",
-        "Modify function behavior with natural language and apply binary patches",
+        t("action.smart_patch_label"),
+        t("action.smart_patch_tooltip"),
         handle_smart_patch,
         False,
     ),
