@@ -407,7 +407,7 @@ class SettingsDialog(QDialog):
 
         self._explore_turns_spin = QSpinBox()
         self._explore_turns_spin.setRange(5, 500)
-        self._explore_turns_spin.setValue(self._config.exploration_turn_limit)
+        self._explore_turns_spin.setValue(getattr(self._config, "exploration_turn_limit", 100))
         self._explore_turns_spin.setToolTip(
             "Maximum turns the agent spends in the exploration phase before "
             "forcing a transition (or reporting an error if findings are insufficient)."
@@ -416,7 +416,7 @@ class SettingsDialog(QDialog):
 
         self._normal_turns_spin = QSpinBox()
         self._normal_turns_spin.setRange(5, 500)
-        self._normal_turns_spin.setValue(self._config.normal_turn_limit)
+        self._normal_turns_spin.setValue(getattr(self._config, "normal_turn_limit", 50))
         self._normal_turns_spin.setToolTip(
             "Maximum turns the agent spends in normal mode before stopping."
         )

@@ -50,6 +50,7 @@ class RikuganConfig:
     checkpoint_auto_save: bool = True
     approve_mutations: bool = False  # require approval for mutating tools (rename, retype, etc.)
     exploration_turn_limit: int = 100  # max turns in exploration phase before forcing transition
+    normal_turn_limit: int = 100  # max turns in normal mode before stopping
     max_retries: int = 3  # max retries on rate-limit / transient API errors
     silent_retry_mode: bool = False  # show loading indicator instead of error messages on retry
     theme: str = "dark"
@@ -188,6 +189,7 @@ class RikuganConfig:
             "checkpoint_auto_save",
             "approve_mutations",
             "exploration_turn_limit",
+            "normal_turn_limit",
             "max_retries",
             "silent_retry_mode",
             "theme",
