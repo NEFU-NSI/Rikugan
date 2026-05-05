@@ -20,6 +20,7 @@ from ..providers.registry import ProviderRegistry
 from ..skills.registry import SkillRegistry
 from ..state.history import SessionHistory
 from ..state.session import SessionState
+from .i18n import t
 
 if TYPE_CHECKING:
     from ..tools.registry import ToolRegistry
@@ -201,12 +202,12 @@ class SessionControllerBase:
         """Return a display label for a tab."""
         session = self._sessions.get(tab_id)
         if session is None:
-            return "New Chat"
+            return t("session.new_chat")
         for msg in session.messages:
             if msg.role.value == "user" and msg.content:
                 text = msg.content.strip()
                 return text[:20] + ("..." if len(text) > 20 else "")
-        return "New Chat"
+        return t("session.new_chat")
 
     @property
     def active_tab_id(self) -> str:

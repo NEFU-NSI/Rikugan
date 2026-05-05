@@ -20,6 +20,7 @@ from .qt_compat import (
     qt_flags,
 )
 from .styles import maybe_host_stylesheet
+from .i18n import t
 
 _STATUS_COLORS: dict[str, str] = {
     "PENDING": "#808080",
@@ -109,27 +110,27 @@ class AgentTreeWidget(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(4)
 
-        self._kill_btn = QPushButton("Kill Selected")
+        self._kill_btn = QPushButton(t("agent_tree.btn_kill_selected"))
         self._kill_btn.setStyleSheet(_BTN_STYLE)
         self._kill_btn.clicked.connect(self._on_kill_selected)
         toolbar.addWidget(self._kill_btn)
 
-        self._clean_btn = QPushButton("Clean")
+        self._clean_btn = QPushButton(t("agent_tree.btn_clean"))
         self._clean_btn.setStyleSheet(_BTN_STYLE)
-        self._clean_btn.setToolTip("Remove selected finished agents (or all finished if none selected)")
+        self._clean_btn.setToolTip(t("agent_tree.clean_tooltip"))
         self._clean_btn.clicked.connect(self._on_clean)
         toolbar.addWidget(self._clean_btn)
 
         self._filter_combo = QComboBox()
         self._filter_combo.setFixedWidth(130)
         self._filter_combo.setStyleSheet(_COMBO_STYLE)
-        self._filter_combo.addItems(["All Agents", "General", "Bulk Rename"])
+        self._filter_combo.addItems([t("agent_tree.filter_all"), t("agent_tree.filter_general"), t("agent_tree.filter_bulk_rename")])
         self._filter_combo.currentTextChanged.connect(self._apply_filter)
         toolbar.addWidget(self._filter_combo)
 
         toolbar.addStretch()
 
-        self._status_label = QLabel("0 running / 0 completed")
+        self._status_label = QLabel(t("agent_tree.status_label", n=0, m=0))
         self._status_label.setStyleSheet(_STATUS_LABEL_STYLE)
         toolbar.addWidget(self._status_label)
 
@@ -139,7 +140,7 @@ class AgentTreeWidget(QWidget):
         self._tree = QTreeWidget()
         self._tree.setObjectName("agent_tree")
         self._tree.setStyleSheet(_TREE_STYLE)
-        self._tree.setHeaderLabels(["Name", "Type", "Status", "Turns", "Time"])
+        self._tree.setHeaderLabels([t("agent_tree.tree_header_name"), t("agent_tree.tree_header_type"), t("agent_tree.tree_header_status"), t("agent_tree.tree_header_turns"), t("agent_tree.tree_header_time")])
         self._tree.setColumnWidth(0, 150)
         self._tree.setColumnWidth(1, 100)
         self._tree.setColumnWidth(2, 80)
@@ -159,7 +160,7 @@ class AgentTreeWidget(QWidget):
         self._preview.setReadOnly(True)
         self._preview.setFixedHeight(80)
         self._preview.setStyleSheet(_PREVIEW_STYLE)
-        self._preview.setPlaceholderText("Select an agent to preview its output...")
+        self._preview.setPlaceholderText(t("agent_tree.preview_placeholder"))
         main_layout.addWidget(self._preview)
 
         # Internal agent tracking: agent_id -> AgentInfo
@@ -247,20 +248,21 @@ class AgentTreeWidget(QWidget):
         # Auto-update preview if this agent is selected
         selected = self._tree.selectedItems()
         if selected and selected[0].data(0, Qt.ItemDataRole.UserRole) == info.agent_id:
-            self._preview.setPlainText(info.summary or "(no output yet)")
+            self._preview.setPlainText(info.summary or t("agent_tree.no_output_yet"))
 
     def _apply_filter(self, _text: str = "") -> None:
         """Show/hide tree items based on the selected category filter."""
-        selected = self._filter_combo.currentText()
+        idx = self._filter_combo.currentIndex()
         for agent_id, item in self._items.items():
             info = self._agents.get(agent_id)
             if info is None:
                 continue
-            if selected == "All Agents":
+            # 0=All, 1=General, 2=Bulk Rename
+            if idx == 0:
                 item.setHidden(False)
-            elif selected == "Bulk Rename":
+            elif idx == 2:
                 item.setHidden(info.category != "bulk_rename")
-            elif selected == "General":
+            else:
                 item.setHidden(info.category == "bulk_rename")
         self._update_status_counts()
 
@@ -273,7 +275,7 @@ class AgentTreeWidget(QWidget):
         agent_id = items[0].data(0, Qt.ItemDataRole.UserRole)
         info = self._agents.get(agent_id)
         if info:
-            self._preview.setPlainText(info.summary or "(no output yet)")
+            self._preview.setPlainText(info.summary or t("agent_tree.no_output_yet"))
         else:
             self._preview.clear()
 
@@ -281,7 +283,7 @@ class AgentTreeWidget(QWidget):
         """Refresh the running / completed counts label."""
         running = sum(1 for a in self._agents.values() if a.status == "RUNNING")
         completed = sum(1 for a in self._agents.values() if a.status == "COMPLETED")
-        self._status_label.setText(f"{running} running / {completed} completed")
+        self._status_label.setText(t("agent_tree.status_label", n=running, m=completed))
 
     @staticmethod
     def _format_elapsed(seconds: float) -> str:

@@ -203,7 +203,7 @@ def _format_tool_group_label(tool_names: list[str]) -> str:
     """Human-friendly group label for collapsed tool-call runs."""
     count = len(tool_names)
     if count <= 0:
-        return "0 tools called"
+        return t("tool.tools_called_label", n=0)
 
     base_names = [_strip_mcp_prefix(name) for name in tool_names]
     unique_names = {name for name in base_names if name}
@@ -597,7 +597,7 @@ class ToolCallWidget(QFrame):
         )
         self._detail_layout.addWidget(self._args_label)
 
-        self._result_header = QLabel("Result:")
+        self._result_header = QLabel(t("tool.result_header"))
         self._result_header.setStyleSheet(
             host_stylesheet(
                 "color: #808080; font-size: 10px; font-weight: bold;",
@@ -944,7 +944,7 @@ class ToolGroupWidget(QFrame):
         self._toggle_btn.clicked.connect(self._toggle)
         header_layout.addWidget(self._toggle_btn)
 
-        self._label = QLabel("0 tools called")
+        self._label = QLabel(t("tool.tools_called_label", n=0))
         self._label.setStyleSheet(
             host_stylesheet(
                 "color: #808080; font-size: 11px; font-weight: bold;",

@@ -131,7 +131,7 @@ class _AddProviderDialog(QDialog):
         form = QFormLayout()
 
         self._name_edit = QLineEdit()
-        self._name_edit.setPlaceholderText("e.g. minimax, deepseek, local-vllm")
+        self._name_edit.setPlaceholderText(t("settings.add_provider_name_placeholder"))
         form.addRow(t("settings.connection_name_label"), self._name_edit)
 
         self._base_edit = QLineEdit()
@@ -247,9 +247,9 @@ class SettingsDialog(QDialog):
         self._skills_tab = SkillsTab(self._config, service=self._service)
         self._tabs.addTab(self._skills_tab, t("settings.skills_tab"))
         self._mcp_tab = MCPTab(self._config, service=self._service)
-        self._tabs.addTab(self._mcp_tab, "MCP")
+        self._tabs.addTab(self._mcp_tab, t("settings.mcp_tab"))
         self._profiles_tab = ProfilesTab(self._config, service=self._service)
-        self._tabs.addTab(self._profiles_tab, "Profiles")
+        self._tabs.addTab(self._profiles_tab, t("settings.profiles_tab"))
 
         layout.addWidget(self._tabs)
 
@@ -290,21 +290,20 @@ class SettingsDialog(QDialog):
         provider_form.addRow(t("settings.api_key_label"), key_layout)
 
         # OAuth checkbox — controls keychain autoload
-        self._oauth_cb = QCheckBox("Use OAuth from Claude Code (macOS Keychain)")
+        self._oauth_cb = QCheckBox(t("settings.oauth_checkbox"))
         self._oauth_cb.setChecked(self._config.oauth_consent_accepted)
         self._oauth_cb.setVisible(self._config.provider.name == "anthropic")
         self._oauth_cb.setToolTip(
-            "Auto-load your Claude Code OAuth token from the macOS Keychain.\n"
-            "Requires accepting Anthropic's credential use policy."
+            t("settings.oauth_tooltip")
         )
         self._oauth_cb.toggled.connect(self._on_oauth_toggled)
         provider_form.addRow("", self._oauth_cb)
 
         self._api_base_edit = QLineEdit(self._config.provider.api_base)
-        self._api_base_edit.setPlaceholderText("Custom endpoint URL (optional)")
-        provider_form.addRow("API Base:", self._api_base_edit)
+        self._api_base_edit.setPlaceholderText(t("settings.custom_endpoint_placeholder"))
+        provider_form.addRow(t("settings.api_base_form_label"), self._api_base_edit)
 
-        provider_form.addRow("Model:", self._build_model_row())
+        provider_form.addRow(t("settings.model_form_label"), self._build_model_row())
 
         return provider_group
 
@@ -408,44 +407,31 @@ class SettingsDialog(QDialog):
         self._explore_turns_spin = QSpinBox()
         self._explore_turns_spin.setRange(5, 500)
         self._explore_turns_spin.setValue(getattr(self._config, "exploration_turn_limit", 100))
-        self._explore_turns_spin.setToolTip(
-            "Maximum turns the agent spends in the exploration phase before "
-            "forcing a transition (or reporting an error if findings are insufficient)."
-        )
+        self._explore_turns_spin.setToolTip(t("settings.exploration_turns_tooltip"))
         behavior_form.addRow(t("settings.exploration_turns"), self._explore_turns_spin)
 
         self._normal_turns_spin = QSpinBox()
         self._normal_turns_spin.setRange(5, 500)
         self._normal_turns_spin.setValue(getattr(self._config, "normal_turn_limit", 50))
-        self._normal_turns_spin.setToolTip(
-            "Maximum turns the agent spends in normal mode before stopping."
-        )
+        self._normal_turns_spin.setToolTip(t("settings.normal_turns_tooltip"))
         behavior_form.addRow(t("settings.normal_turns"), self._normal_turns_spin)
 
         # --- Rate-limit handling ---
         self._max_retries_spin = QSpinBox()
         self._max_retries_spin.setRange(1, 10)
         self._max_retries_spin.setValue(self._config.max_retries)
-        self._max_retries_spin.setToolTip(
-            "Number of retry attempts when the API returns a rate-limit or transient error."
-        )
+        self._max_retries_spin.setToolTip(t("settings.api_retries_tooltip"))
         behavior_form.addRow(t("settings.api_retries"), self._max_retries_spin)
 
         self._silent_retry_cb = QCheckBox(t("settings.silent_retry"))
         self._silent_retry_cb.setChecked(self._config.silent_retry_mode)
-        self._silent_retry_cb.setToolTip(
-            "When enabled, rate-limit retries show a subtle text indicator instead of red error messages."
-        )
+        self._silent_retry_cb.setToolTip(t("settings.silent_retry_tooltip"))
         behavior_form.addRow(self._silent_retry_cb)
 
         # --- Context preservation ---
         self._preserve_context_cb = QCheckBox(t("settings.preserve_context"))
         self._preserve_context_cb.setChecked(self._config.preserve_context)
-        self._preserve_context_cb.setToolTip(
-            "Disables tool result truncation and message trimming. "
-            "Enable for deep RE sessions where losing decompilation context is worse than higher token cost."
-        )
-        behavior_form.addRow(self._preserve_context_cb)
+        self._preserve_context_cb.setToolTip(t("settings.preserve_context_tooltip"))
 
         # --- API key encryption ---
         from ..core.crypto import is_available as crypto_available
@@ -453,17 +439,18 @@ class SettingsDialog(QDialog):
         self._encrypt_keys_cb = QCheckBox(t("settings.encrypt_keys"))
         self._encrypt_keys_cb.setChecked(self._config.encrypt_api_keys)
         self._encrypt_keys_cb.setEnabled(crypto_available())
-        self._encrypt_keys_cb.setToolTip(
-            "Encrypt all stored API keys with a password.\nYou must enter this password each time Rikugan starts."
-            if crypto_available()
-            else "Requires the 'cryptography' package (pip install cryptography)."
-        )
+        if crypto_available():
+            self._encrypt_keys_cb.setToolTip(
+                t("settings.encrypt_keys_tooltip1")
+            )
+        else:
+            self._encrypt_keys_cb.setToolTip(t("settings.encrypt_keys_tooltip2"))
         behavior_form.addRow(self._encrypt_keys_cb)
 
         # --- Language selector ---
         self._language_combo = QComboBox()
-        self._language_combo.addItem("English", "en")
-        self._language_combo.addItem("中文", "zh")
+        self._language_combo.addItem(t("settings.lang_english"), "en")
+        self._language_combo.addItem(t("settings.lang_chinese"), "zh")
         idx = self._language_combo.findData(self._config.language)
         if idx >= 0:
             self._language_combo.setCurrentIndex(idx)
@@ -559,13 +546,13 @@ class SettingsDialog(QDialog):
 
         # Update placeholder
         if provider == "anthropic":
-            self._api_key_edit.setPlaceholderText("sk-... or leave empty for OAuth auto-detect")
+            self._api_key_edit.setPlaceholderText(t("settings.api_key_placeholder_oauth"))
         elif provider == "ollama":
-            self._api_key_edit.setPlaceholderText("Not required for local Ollama")
+            self._api_key_edit.setPlaceholderText(t("settings.api_key_placeholder_local"))
         elif provider in ("openai_compat",) or is_custom:
-            self._api_key_edit.setPlaceholderText("API key for the endpoint")
+            self._api_key_edit.setPlaceholderText(t("settings.api_key_placeholder_endpoint"))
         else:
-            self._api_key_edit.setPlaceholderText("API key")
+            self._api_key_edit.setPlaceholderText(t("settings.api_key_placeholder_generic"))
 
         self._update_auth_status()
         self._fetch_models()
@@ -772,14 +759,14 @@ class SettingsDialog(QDialog):
 
         pw_edit = QLineEdit()
         pw_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        pw_edit.setPlaceholderText("Password")
+        pw_edit.setPlaceholderText(t("settings.password_placeholder"))
         layout.addWidget(pw_edit)
 
         pw_confirm: QLineEdit | None = None
         if confirm:
             pw_confirm = QLineEdit()
             pw_confirm.setEchoMode(QLineEdit.EchoMode.Password)
-            pw_confirm.setPlaceholderText("Confirm password")
+            pw_confirm.setPlaceholderText(t("settings.confirm_password_placeholder"))
             layout.addWidget(pw_confirm)
 
         from .qt_compat import QDialogButtonBox, qt_flags, qt_run
@@ -799,7 +786,7 @@ class SettingsDialog(QDialog):
 
         password = pw_edit.text()
         if not password:
-            QMessageBox.warning(self, title, "Password cannot be empty.")
+            QMessageBox.warning(self, title, t("profile.name_required"))
             return ""
         if confirm and pw_confirm and pw_confirm.text() != password:
             QMessageBox.warning(self, title, "Passwords do not match.")
@@ -864,7 +851,7 @@ class SettingsDialog(QDialog):
                 if not self._config.decrypt_stored_keys(password):
                     from .qt_compat import QMessageBox
 
-                    QMessageBox.warning(self, "Wrong Password", "Incorrect password.")
+                    QMessageBox.warning(self, t("panel.wrong_password_title"), "Incorrect password.")
                     return
             password = ""  # save unencrypted
 

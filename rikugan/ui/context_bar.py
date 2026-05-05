@@ -19,6 +19,8 @@ from .qt_compat import (
     QWidget,
 )
 
+from .i18n import t
+
 if is_ida():
     try:
         ida_funcs = importlib.import_module("ida_funcs")
@@ -71,10 +73,10 @@ class ContextBar(QFrame):
         layout.setContentsMargins(8, 2, 8, 2)
         layout.setSpacing(16)
 
-        self._address_label = self._make_pair("Addr:", "\u2014")
-        self._function_label = self._make_pair("Func:", "\u2014")
-        self._model_label = self._make_pair("Model:", "\u2014")
-        self._tokens_label = self._make_pair("Tokens:", "0")
+        self._address_label = self._make_pair(t("context.addr_label"), "\u2014")
+        self._function_label = self._make_pair(t("context.func_label"), "\u2014")
+        self._model_label = self._make_pair(t("context.model_label"), "\u2014")
+        self._tokens_label = self._make_pair(t("context.tokens_label"), "0")
 
         for label, value in (
             self._address_label,

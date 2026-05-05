@@ -299,13 +299,13 @@ class RikuganPanelCore(QWidget):
 
         for _attempt in range(3):
             dlg = QDialog()
-            dlg.setWindowTitle("Rikugan — Encrypted API Keys")
+            dlg.setWindowTitle(t("panel.export_title"))
             dlg.setMinimumWidth(350)
             layout = QVBoxLayout(dlg)
-            layout.addWidget(QLabel("Enter password to decrypt API keys:"))
+            layout.addWidget(QLabel(t("panel.decrypt_prompt")))
             pw_edit = QLineEdit()
             pw_edit.setEchoMode(QLineEdit.EchoMode.Password)
-            pw_edit.setPlaceholderText("Password")
+            pw_edit.setPlaceholderText(t("panel.decrypt_placeholder"))
             layout.addWidget(pw_edit)
             buttons = QDialogButtonBox(
                 qt_flags(
@@ -322,7 +322,7 @@ class RikuganPanelCore(QWidget):
             if self._config.decrypt_stored_keys(pw_edit.text()):
                 log_debug("API keys decrypted successfully")
                 return
-            QMessageBox.warning(None, "Wrong Password", "Incorrect password. Please try again.")
+            QMessageBox.warning(None, t("panel.wrong_password_title"), t("panel.wrong_password_message"))
         log_debug("API key decryption skipped or failed — keys will be empty")
 
     def _check_oauth_consent(self) -> None:
@@ -415,7 +415,7 @@ class RikuganPanelCore(QWidget):
             )
         )
         if self._dependency_warnings:
-            self._dependency_banner.setText("Warnings: " + " ".join(self._dependency_warnings))
+            self._dependency_banner.setText(t("settings.warnings_prefix") + " ".join(self._dependency_warnings))
             layout.insertWidget(1, self._dependency_banner)
         else:
             self._dependency_banner.hide()
@@ -524,35 +524,35 @@ class RikuganPanelCore(QWidget):
         btn_layout = QVBoxLayout()
         btn_layout.setSpacing(4)
 
-        self._send_btn = QPushButton("Send")
+        self._send_btn = QPushButton(t("panel.btn_send"))
         self._send_btn.setObjectName("send_button")
         self._send_btn.setFixedWidth(64)
         self._send_btn.setStyleSheet(maybe_host_stylesheet(_SMALL_BTN_STYLE))
         self._send_btn.clicked.connect(self._on_send_clicked)
         btn_layout.addWidget(self._send_btn)
-        self._cancel_btn = QPushButton("Stop")
+        self._cancel_btn = QPushButton(t("panel.btn_stop"))
         self._cancel_btn.setObjectName("cancel_button")
         self._cancel_btn.setFixedWidth(64)
         self._cancel_btn.setStyleSheet(maybe_host_stylesheet(_CANCEL_BTN_STYLE))
         self._cancel_btn.setVisible(False)
         self._cancel_btn.clicked.connect(self._on_cancel)
         btn_layout.addWidget(self._cancel_btn)
-        self._new_btn = QPushButton("New")
+        self._new_btn = QPushButton(t("panel.btn_new"))
         self._new_btn.setFixedWidth(64)
         self._new_btn.setStyleSheet(maybe_host_stylesheet(_SMALL_BTN_STYLE))
         self._new_btn.clicked.connect(self._on_new_tab)
         btn_layout.addWidget(self._new_btn)
-        self._export_btn = QPushButton("Export")
+        self._export_btn = QPushButton(t("panel.btn_export"))
         self._export_btn.setFixedWidth(64)
         self._export_btn.setStyleSheet(maybe_host_stylesheet(_SMALL_BTN_STYLE))
         self._export_btn.clicked.connect(self._on_export_current)
         btn_layout.addWidget(self._export_btn)
-        self._settings_btn = QPushButton("Settings")
+        self._settings_btn = QPushButton(t("panel.btn_settings"))
         self._settings_btn.setFixedWidth(64)
         self._settings_btn.setStyleSheet(maybe_host_stylesheet(_SMALL_BTN_STYLE))
         self._settings_btn.clicked.connect(self._on_settings)
         btn_layout.addWidget(self._settings_btn)
-        self._mutations_btn = QPushButton("Mutations")
+        self._mutations_btn = QPushButton(t("panel.btn_mutations"))
         self._mutations_btn.setFixedWidth(64)
         self._mutations_btn.setStyleSheet(maybe_host_stylesheet(_SMALL_BTN_STYLE))
         self._mutations_btn.setCheckable(True)
@@ -675,7 +675,7 @@ class RikuganPanelCore(QWidget):
         include_subagents = False
         if session.subagent_logs:
             dlg = QDialog(self)
-            dlg.setWindowTitle("Export Options")
+            dlg.setWindowTitle(t("panel.export_options_title"))
             dlg.setStyleSheet(
                 maybe_host_stylesheet(
                     "QDialog { background: #1e1e1e; }"
@@ -684,7 +684,7 @@ class RikuganPanelCore(QWidget):
                 )
             )
             layout = QVBoxLayout(dlg)
-            cb = QCheckBox(f"Include subagent logs ({len(session.subagent_logs)} subagent runs)")
+            cb = QCheckBox(t("panel.export_include_subagents", n=len(session.subagent_logs)))
             cb.setChecked(True)
             layout.addWidget(cb)
             buttons = QDialogButtonBox(
@@ -704,7 +704,7 @@ class RikuganPanelCore(QWidget):
         default_name = f"rikugan-{label}-{time.strftime('%Y%m%d-%H%M%S')}.md"
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Export Chat",
+            t("panel.export_chat_title"),
             default_name,
             "Markdown (*.md);;Text (*.txt);;All Files (*)",
         )
@@ -969,9 +969,9 @@ class RikuganPanelCore(QWidget):
     def _show_new_chat_dialog(self, context_pct: int) -> str:
         """Show a confirmation dialog with context usage. Returns 'yes', 'clear', or 'no'."""
         dlg = QMessageBox(self)
-        dlg.setWindowTitle("New Chat")
-        dlg.setText("Start a new chat? Current conversation will be saved.")
-        dlg.setInformativeText(f"Context usage: {context_pct}%")
+        dlg.setWindowTitle(t("panel.new_chat_dialog_title"))
+        dlg.setText(t("panel.new_chat_dialog_message"))
+        dlg.setInformativeText(t("panel.context_usage", pct=context_pct))
         dlg.setStyleSheet(
             maybe_host_stylesheet(
                 "QMessageBox { background: #1e1e1e; color: #d4d4d4; }"
@@ -981,12 +981,12 @@ class RikuganPanelCore(QWidget):
                 "QPushButton:hover { background: #3c3c3c; }"
             )
         )
-        yes_btn = dlg.addButton("Yes", QMessageBox.ButtonRole.AcceptRole)
+        yes_btn = dlg.addButton(t("panel.yes_button"), QMessageBox.ButtonRole.AcceptRole)
         clear_btn = dlg.addButton(
-            f"Yes, clear context ({context_pct}% used)",
+            t("panel.yes_clear_context", pct=context_pct),
             QMessageBox.ButtonRole.AcceptRole,
         )
-        no_btn = dlg.addButton("No", QMessageBox.ButtonRole.RejectRole)
+        no_btn = dlg.addButton(t("panel.no_button"), QMessageBox.ButtonRole.RejectRole)
         dlg.setDefaultButton(no_btn)
         qt_run(dlg)
         clicked = dlg.clickedButton()
@@ -1418,7 +1418,7 @@ class RikuganPanelCore(QWidget):
             return
         elapsed = (info.completed_at or info.created_at) - info.created_at
         text = (
-            f"[Subagent \u201c{info.name}\u201d completed ({info.turn_count} turns, {elapsed:.0f}s)]\n\n{info.summary}"
+            t("panel.subagent_completed", name=info.name, turns=info.turn_count, elapsed=f"{elapsed:.0f}") + "\n\n" + info.summary
         )
         self._start_agent(text)
 
@@ -1458,6 +1458,16 @@ class RikuganPanelCore(QWidget):
 
     def _on_renamer_seek(self, address: int) -> None:
         """Navigate the host disassembly view to the given address."""
+        from ..core.host import host_kind
+
+        if host_kind() == "binary_ninja":
+            # Binary Ninja's UI API (navigate/setCurrentOffset) called during
+            # Qt event processing triggers recursive UI updates that crash at
+            # the C++ / Shiboken boundary — Python try/except cannot catch
+            # those.  Skip navigation for BN; users can navigate via the
+            # context-bar address input or by typing into the filter box.
+            return
+
         from ..core.host import navigate_to
 
         navigate_to(address)
@@ -1582,11 +1592,9 @@ class RikuganPanelCore(QWidget):
         else:
             self._input_area.set_enabled(True)
             if running:
-                self._input_area.setPlaceholderText(
-                    "Rikugan is thinking... press Enter (or Queue) to queue a follow-up."
-                )
+                self._input_area.setPlaceholderText(t("panel.input_placeholder_thinking"))
             else:
-                self._input_area.setPlaceholderText("Ask about this binary... (/ for skills, /modify to patch)")
+                self._input_area.setPlaceholderText(t("chat.input_placeholder.ask"))
 
         self._send_btn.setVisible(True)
         self._send_btn.setEnabled(not self._awaiting_button_approval)

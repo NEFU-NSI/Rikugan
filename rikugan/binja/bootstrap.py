@@ -37,29 +37,26 @@ _SIDEBAR_REGISTERED = False
 
 
 def _navigate_cb(ea: int) -> bool:
-    """Best-effort Binary Ninja UI navigation callback."""
+    """Best-effort Binary Ninja UI navigation callback.
+
+    All BN API calls are individually wrapped in try/except because calling
+    BN UI APIs (especially ``bv.navigate``) during Qt event processing can
+    trigger recursive UI updates that crash the host process.
+    """
     global _LAST_BV
     bv = _LAST_BV
     if bv is None:
         return False
 
-    # Try BinaryView.navigate(view, addr)
-    nav = getattr(bv, "navigate", None)
-    if callable(nav):
-        for view in ("Graph:IL", "Graph:Disassembly", "Linear:Disassembly", "Linear"):
-            try:
-                if bool(nav(view, int(ea))):
-                    return True
-            except Exception as e:
-                log_debug(f"_navigate_cb nav({view!r}) failed at 0x{ea:x}: {e}")
-                continue
-        try:
-            if bool(nav(int(ea))):
-                return True
-        except Exception as e:
-            log_debug(f"_navigate_cb nav(ea) failed at 0x{ea:x}: {e}")
+    # Guard against closed/stale BinaryView — accessing a closed BV crashes BN.
+    try:
+        _ = bv.file_view  # any attribute access on a closed BV raises
+    except Exception:
+        return False
 
-    # Try UIContext navigation APIs if available
+    ea = int(ea)
+
+    # --- 1. Try setCurrentOffset on the current view frame (safest) ---
     if bnui is not None:
         try:
             ui_ctx_cls = getattr(bnui, "UIContext", None)
@@ -68,17 +65,55 @@ def _navigate_cb(ea: int) -> bool:
                 if active is not None:
                     vf = active.getCurrentViewFrame()
                     if vf is not None:
-                        for meth_name in ("navigate", "setCurrentOffset"):
-                            meth = getattr(vf, meth_name, None)
-                            if callable(meth):
-                                try:
-                                    rc = meth(int(ea))
-                                    if rc is None or bool(rc):
-                                        return True
-                                except Exception as e:
-                                    log_debug(f"_navigate_cb UIContext.{meth_name} failed at 0x{ea:x}: {e}")
-        except Exception as e:
-            log_debug(f"_navigate_cb UIContext navigation failed at 0x{ea:x}: {e}")
+                        set_offset = getattr(vf, "setCurrentOffset", None)
+                        if callable(set_offset):
+                            try:
+                                set_offset(ea)
+                                return True
+                            except Exception:
+                                pass  # fall through to other methods
+        except Exception:
+            pass
+
+    # --- 2. Try the simplest bv.navigate(ea) (no view arg) ---
+    nav = getattr(bv, "navigate", None)
+    if callable(nav):
+        try:
+            result = nav(ea)
+            if result is not None and bool(result):
+                return True
+        except Exception:
+            pass
+
+    # --- 3. Try bv.navigate(view, ea) for common views only ---
+    if callable(nav):
+        for view in ("Linear:Disassembly", "Graph:Disassembly"):
+            try:
+                result = nav(view, ea)
+                if result is not None and bool(result):
+                    return True
+            except Exception:
+                continue
+
+    # --- 4. Last resort: UIContext.navigate on view frame ---
+    if bnui is not None:
+        try:
+            ui_ctx_cls = getattr(bnui, "UIContext", None)
+            if ui_ctx_cls is not None:
+                active = ui_ctx_cls.activeContext()
+                if active is not None:
+                    vf = active.getCurrentViewFrame()
+                    if vf is not None:
+                        meth = getattr(vf, "navigate", None)
+                        if callable(meth):
+                            try:
+                                result = meth(ea)
+                                if result is None or bool(result):
+                                    return True
+                            except Exception:
+                                pass
+        except Exception:
+            pass
 
     return False
 

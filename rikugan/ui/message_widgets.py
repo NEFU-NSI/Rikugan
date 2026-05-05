@@ -741,7 +741,7 @@ class ExplorationFindingWidget(QFrame):
                     f"color: #d7ba7d; {_native_text_style(size=12, bold=True)}",
                 )
             )
-            rel_label.setToolTip("High relevance")
+            rel_label.setToolTip(t("message.high_relevance"))
             layout.addWidget(rel_label)
 
 

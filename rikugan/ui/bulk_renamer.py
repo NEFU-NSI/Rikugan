@@ -26,6 +26,7 @@ from .qt_compat import (
     qt_flags,
 )
 from .styles import maybe_host_stylesheet
+from .i18n import t
 
 _BTN_STYLE = (
     "QPushButton { background: #2d2d2d; color: #d4d4d4; border: 1px solid #3c3c3c; "
@@ -175,18 +176,18 @@ class BulkRenamerWidget(QWidget):
         top_bar.setSpacing(4)
 
         self._filter_edit = QLineEdit()
-        self._filter_edit.setPlaceholderText("Filter by name or address...")
+        self._filter_edit.setPlaceholderText(t("renamer.filter_placeholder"))
         self._filter_edit.setStyleSheet(_FILTER_STYLE)
         self._filter_edit.textChanged.connect(self._on_filter_changed)
         top_bar.addWidget(self._filter_edit, 1)
 
         self._filter_combo = QComboBox()
         self._filter_combo.setStyleSheet(_COMBO_STYLE)
-        self._filter_combo.addItems(["All Functions", "Auto-named Only", "User-renamed", "Imports"])
+        self._filter_combo.addItems([t("renamer.filter_all"), t("renamer.filter_auto_named"), t("renamer.filter_user_renamed"), t("renamer.filter_imports")])
         self._filter_combo.currentIndexChanged.connect(self._on_filter_changed)
         top_bar.addWidget(self._filter_combo)
 
-        self._selection_label = QLabel("0 / 0 selected")
+        self._selection_label = QLabel(t("renamer.selection_count", n=0, total=0))
         self._selection_label.setStyleSheet(_MUTED_LABEL_STYLE)
         top_bar.addWidget(self._selection_label)
 
@@ -197,7 +198,7 @@ class BulkRenamerWidget(QWidget):
         self._table.setObjectName("renamer_table")
         self._table.setStyleSheet(_TABLE_STYLE)
         self._table.setColumnCount(6)
-        self._table.setHorizontalHeaderLabels(["", "Address", "Current Name", "Length", "New Name", "Status"])
+        self._table.setHorizontalHeaderLabels([t("renamer.header_checkbox"), t("renamer.header_address"), t("renamer.header_current_name"), t("renamer.header_length"), t("renamer.header_new_name"), t("renamer.header_status")])
         self._table.setAlternatingRowColors(True)
         self._table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -238,25 +239,25 @@ class BulkRenamerWidget(QWidget):
         analysis_bar = QHBoxLayout()
         analysis_bar.setSpacing(6)
 
-        mode_label = QLabel("Mode:")
+        mode_label = QLabel(t("renamer.mode_label"))
         mode_label.setStyleSheet(_LABEL_STYLE)
         analysis_bar.addWidget(mode_label)
 
-        self._quick_radio = QRadioButton("Quick")
+        self._quick_radio = QRadioButton(t("renamer.mode_quick"))
         self._quick_radio.setStyleSheet(_RADIO_STYLE)
         self._quick_radio.setChecked(True)
         analysis_bar.addWidget(self._quick_radio)
 
-        self._deep_radio = QRadioButton("Deep")
+        self._deep_radio = QRadioButton(t("renamer.mode_deep"))
         self._deep_radio.setStyleSheet(_RADIO_STYLE)
         self._deep_radio.toggled.connect(lambda: self._update_selection_count())
         analysis_bar.addWidget(self._deep_radio)
 
         analysis_bar.addSpacing(12)
 
-        batch_label = QLabel("Batch:")
+        batch_label = QLabel(t("renamer.batch_label"))
         batch_label.setStyleSheet(_LABEL_STYLE)
-        batch_label.setToolTip("Quick: functions per LLM prompt. Deep: ignored (1 agent per function).")
+        batch_label.setToolTip(t("renamer.batch_tooltip"))
         analysis_bar.addWidget(batch_label)
 
         self._batch_input = QLineEdit("10")
@@ -264,13 +265,13 @@ class BulkRenamerWidget(QWidget):
         self._batch_input.setValidator(QIntValidator(1, 999999))
         self._batch_input.setFixedWidth(50)
         self._batch_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._batch_input.setToolTip("Quick: functions per LLM prompt. Deep: ignored (1 agent per function).")
+        self._batch_input.setToolTip(t("renamer.batch_tooltip"))
         self._batch_input.textChanged.connect(lambda: self._update_selection_count())
         analysis_bar.addWidget(self._batch_input)
 
-        concurrent_label = QLabel("Jobs:")
+        concurrent_label = QLabel(t("renamer.jobs_label"))
         concurrent_label.setStyleSheet(_LABEL_STYLE)
-        concurrent_label.setToolTip("Max parallel agents/requests running at the same time")
+        concurrent_label.setToolTip(t("renamer.jobs_tooltip"))
         analysis_bar.addWidget(concurrent_label)
 
         self._concurrent_input = QLineEdit("3")
@@ -278,7 +279,7 @@ class BulkRenamerWidget(QWidget):
         self._concurrent_input.setValidator(QIntValidator(1, 999999))
         self._concurrent_input.setFixedWidth(50)
         self._concurrent_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._concurrent_input.setToolTip("Max parallel agents/requests running at the same time")
+        self._concurrent_input.setToolTip(t("renamer.jobs_tooltip"))
         analysis_bar.addWidget(self._concurrent_input)
 
         analysis_bar.addStretch()
@@ -288,24 +289,24 @@ class BulkRenamerWidget(QWidget):
         action_bar = QHBoxLayout()
         action_bar.setSpacing(4)
 
-        self._start_btn = QPushButton("Start")
+        self._start_btn = QPushButton(t("renamer.btn_start"))
         self._start_btn.setStyleSheet(_START_BTN_STYLE)
         self._start_btn.clicked.connect(self._on_start)
         action_bar.addWidget(self._start_btn)
 
-        self._stop_btn = QPushButton("Stop")
+        self._stop_btn = QPushButton(t("renamer.btn_stop"))
         self._stop_btn.setStyleSheet(_STOP_BTN_STYLE)
         self._stop_btn.setEnabled(False)
         self._stop_btn.clicked.connect(self._on_stop)
         action_bar.addWidget(self._stop_btn)
 
-        self._pause_btn = QPushButton("Pause")
+        self._pause_btn = QPushButton(t("renamer.btn_pause"))
         self._pause_btn.setStyleSheet(_BTN_STYLE)
         self._pause_btn.setEnabled(False)
         self._pause_btn.clicked.connect(self._on_pause_toggle)
         action_bar.addWidget(self._pause_btn)
 
-        self._undo_btn = QPushButton("Undo All")
+        self._undo_btn = QPushButton(t("renamer.btn_undo_all"))
         self._undo_btn.setStyleSheet(_BTN_STYLE)
         self._undo_btn.setEnabled(False)
         self._undo_btn.clicked.connect(self.undo_requested.emit)
@@ -317,7 +318,7 @@ class BulkRenamerWidget(QWidget):
         self._progress.setValue(0)
         action_bar.addWidget(self._progress, 1)
 
-        self._progress_label = QLabel("0 / 0")
+        self._progress_label = QLabel(t("renamer.progress_label", n=0, total=0))
         self._progress_label.setStyleSheet(_MUTED_LABEL_STYLE)
         action_bar.addWidget(self._progress_label)
 
@@ -510,7 +511,7 @@ class BulkRenamerWidget(QWidget):
         else:
             self._progress.setMaximum(1)
             self._progress.setValue(0)
-        self._progress_label.setText(f"{current} / {total}")
+        self._progress_label.setText(t("renamer.progress_label", n=current, total=total))
 
         # Enable undo if any work has been done
         self._undo_btn.setEnabled(current > 0)
@@ -520,7 +521,7 @@ class BulkRenamerWidget(QWidget):
             self._start_btn.setEnabled(True)
             self._stop_btn.setEnabled(False)
             self._pause_btn.setEnabled(False)
-            self._pause_btn.setText("Pause")
+            self._pause_btn.setText(t("renamer.btn_pause"))
             self._paused = False
 
     def _on_cell_clicked(self, row: int, column: int) -> None:
@@ -543,21 +544,24 @@ class BulkRenamerWidget(QWidget):
     def _on_cell_double_clicked(self, row: int, column: int) -> None:
         """Double-click on Address, Name, or New Name navigates to that function."""
         if column in (_COL_ADDR, _COL_NAME, _COL_NEWNAME):
-            entry = self._entry_for_row(row)
-            if entry is not None:
-                self.seek_requested.emit(entry.address)
+            try:
+                entry = self._entry_for_row(row)
+                if entry is not None:
+                    self.seek_requested.emit(entry.address)
+            except Exception:
+                pass  # crash-proof: don't let a bad double-click kill the host
 
     def _on_pause_toggle(self) -> None:
         """Toggle pause/resume and update button text."""
         self._paused = not self._paused
-        self._pause_btn.setText("Resume" if self._paused else "Pause")
+        self._pause_btn.setText(t("renamer.btn_resume") if self._paused else t("renamer.btn_pause"))
         self.pause_requested.emit()
 
     def _on_stop(self) -> None:
         """Stop the running renamer engine."""
         self._stop_btn.setEnabled(False)
         self._pause_btn.setEnabled(False)
-        self._pause_btn.setText("Pause")
+        self._pause_btn.setText(t("renamer.btn_pause"))
         self._start_btn.setEnabled(True)
         self._paused = False
         self.cancel_requested.emit()
@@ -648,10 +652,7 @@ class BulkRenamerWidget(QWidget):
         self._start_btn.setEnabled(False)
         self._stop_btn.setEnabled(True)
         self._pause_btn.setEnabled(True)
-        self._pause_btn.setText("Pause")
-        self._paused = False
-
-        # Mark selected jobs as queued
+        self._pause_btn.setText(t("renamer.btn_pause"))
         for job in jobs:
             self.update_job(job["address"], "", "queued", "")
 
@@ -668,14 +669,14 @@ class BulkRenamerWidget(QWidget):
                 selected += 1
 
         if self._deep_radio.isChecked() and selected > 0:
-            self._selection_label.setText(f"{selected} / {total} selected \u2022 {selected} subagents")
+            self._selection_label.setText(t("renamer.selection_count", n=selected, total=total) + " " + t("renamer.subagents_count", n=selected))
         else:
             batch = self._batch_value()
             batches = (selected + batch - 1) // batch if selected > 0 else 0
             if selected > 0:
-                self._selection_label.setText(f"{selected} / {total} selected \u2022 {batches} batch(es)")
+                self._selection_label.setText(t("renamer.selection_count", n=selected, total=total) + " " + t("renamer.batch_count", n=batches))
             else:
-                self._selection_label.setText(f"{selected} / {total} selected")
+                self._selection_label.setText(t("renamer.selection_count", n=selected, total=total))
 
     def select_and_filter_address(self, address: int) -> None:
         """Filter to a specific address and check it — used by send_to_bulk_rename."""

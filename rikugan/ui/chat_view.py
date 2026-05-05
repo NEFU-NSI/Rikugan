@@ -420,7 +420,7 @@ class ChatView(QScrollArea):
         self._hide_thinking()
         self._reset_tool_run()
         if event.type == TurnEventType.SAVE_APPROVAL_REQUEST:
-            options = ["Save All", "Discard All"]
+            options = [t("chat.save_all"), t("chat.discard_all")]
         else:  # USER_QUESTION
             options = event.metadata.get("options", [])
         widget = UserQuestionWidget(event.text, options, parent=self._container)

@@ -43,7 +43,7 @@ class MutationEntryWidget(QFrame):
         self._indicator.setStyleSheet(
             "color: #4ec9b0; font-size: 14px;" if record.reversible else "color: #808080; font-size: 14px;"
         )
-        self._indicator.setToolTip("Reversible" if record.reversible else "Not reversible")
+        self._indicator.setToolTip(t("mutation.reversible_tooltip") if record.reversible else t("mutation.not_reversible_tooltip"))
         layout.addWidget(self._indicator)
 
         # Description

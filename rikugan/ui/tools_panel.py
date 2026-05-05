@@ -74,7 +74,7 @@ class ToolsPanel(QWidget):
         header_layout = QHBoxLayout(self._header)
         header_layout.setContentsMargins(12, 8, 12, 8)
 
-        title = QLabel("Tools")
+        title = QLabel(t("tools.title"))
         title.setStyleSheet(maybe_host_stylesheet(_HEADER_STYLE))
         header_layout.addWidget(title)
         header_layout.addStretch()
