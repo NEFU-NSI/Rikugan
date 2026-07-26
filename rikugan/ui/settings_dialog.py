@@ -1,4 +1,4 @@
-"""Settings dialog for provider, model, API key, and temperature configuration."""
+"""Settings dialog for provider, model, API key, and behavior configuration."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from ..core.config import RikuganConfig
 from ..core.logging import log_debug, log_error
 from ..core.types import ModelInfo
 from ..providers.auth_cache import resolve_auth_cached
+from ..providers.auth_compat import apply_keychain_consent, invalidate_auth_cache
 from ..providers.ollama_provider import DEFAULT_OLLAMA_URL
 from ..providers.registry import ProviderRegistry
 from .i18n import t
@@ -19,7 +20,7 @@ from .qt_compat import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -73,7 +74,7 @@ class _ModelFetcher:
             except queue.Empty:
                 break
 
-    def fetch(self, provider_name: str, api_key: str, api_base: str) -> None:
+    def fetch(self, provider_name: str, api_key: str, api_base: str, extra: dict[str, Any] | None = None) -> None:
         # Create the provider and pre-import its SDK on the MAIN thread.
         # Python 3.14 crashes when heavy C-extension packages are first
         # imported from a background thread.
@@ -82,6 +83,7 @@ class _ModelFetcher:
                 provider_name,
                 api_key=api_key,
                 api_base=api_base,
+                **(extra or {}),
             )
             provider.ensure_ready()
         except Exception as e:
@@ -110,6 +112,7 @@ class _ModelFetcher:
 
 _BUILTIN_PROVIDERS = [
     "anthropic",
+    "codex",
     "openai",
     "gemini",
     "ollama",
@@ -174,6 +177,108 @@ class _AddProviderDialog(QDialog):
     def api_base(self) -> str:
         return self._base_edit.text().strip()
 
+    def provider_settings(self) -> dict[str, Any]:
+        return {}
+
+
+class _CodexSetupDialog(QDialog):
+    """Device-code login dialog for Codex / ChatGPT OAuth."""
+
+    def __init__(self, parent: QWidget = None):
+        super().__init__(parent)
+        self.setWindowTitle("Setup Codex")
+        self.setMinimumWidth(420)
+        self._queue: queue.Queue = queue.Queue()
+        self._device_code: Any = None
+        self._done = False
+        self._polling = False
+
+        layout = QVBoxLayout(self)
+        self._status = QLabel("Requesting device code...")
+        self._status.setWordWrap(True)
+        layout.addWidget(self._status)
+
+        self._link = QLabel()
+        self._link.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        self._link.setOpenExternalLinks(True)
+        self._link.hide()
+        layout.addWidget(self._link)
+
+        self._code = QLineEdit()
+        self._code.setReadOnly(True)
+        self._code.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._code.hide()
+        layout.addWidget(self._code)
+
+        self._poll_btn = QPushButton("Check login")
+        self._poll_btn.setEnabled(False)
+        self._poll_btn.clicked.connect(self._start_poll)
+        layout.addWidget(self._poll_btn)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._poll_queue)
+        self._timer.start(150)
+        threading.Thread(target=self._request_code, daemon=True).start()
+
+    def _request_code(self) -> None:
+        try:
+            from ..providers.codex_provider import request_codex_device_code
+
+            self._queue.put(("code", request_codex_device_code()))
+        except Exception as exc:
+            self._queue.put(("error", str(exc)))
+
+    def _start_poll(self) -> None:
+        if self._device_code is None or self._polling:
+            return
+        self._polling = True
+        self._poll_btn.setEnabled(False)
+        self._status.setText("Waiting for browser authorization...")
+        threading.Thread(target=self._complete_login, daemon=True).start()
+
+    def _complete_login(self) -> None:
+        if self._device_code is None:
+            self._queue.put(("error", "Codex device code is not ready"))
+            return
+        try:
+            from ..providers.codex_provider import complete_codex_device_code_login
+
+            complete_codex_device_code_login(self._device_code)
+            self._queue.put(("done", "Codex OAuth saved"))
+        except Exception as exc:
+            self._queue.put(("error", str(exc)))
+
+    def _poll_queue(self) -> None:
+        try:
+            kind, payload = self._queue.get_nowait()
+        except queue.Empty:
+            return
+        if kind == "code":
+            self._device_code = payload
+            self._status.setText("Open the link and enter this code.")
+            self._link.setText(f'<a href="{payload.verification_url}">{payload.verification_url}</a>')
+            self._link.show()
+            self._code.setText(payload.user_code)
+            self._code.show()
+            self._poll_btn.setEnabled(True)
+            self._start_poll()
+        elif kind == "done":
+            self._done = True
+            self._status.setText(payload)
+            self.accept()
+        elif kind == "error":
+            self._polling = False
+            self._status.setText(payload)
+            self._poll_btn.setEnabled(self._device_code is not None)
+
+    def done(self, result: int) -> None:
+        self._timer.stop()
+        super().done(result)
+
 
 class SettingsDialog(QDialog):
     """Configuration dialog for Rikugan."""
@@ -230,8 +335,6 @@ class SettingsDialog(QDialog):
         playout = QVBoxLayout(provider_tab)
         self._provider_group = self._build_provider_group()
         playout.addWidget(self._provider_group)
-        self._generation_group = self._build_generation_group()
-        playout.addWidget(self._generation_group)
         self._behavior_group = self._build_behavior_group()
         playout.addWidget(self._behavior_group)
         playout.addStretch()
@@ -298,6 +401,11 @@ class SettingsDialog(QDialog):
         )
         self._oauth_cb.toggled.connect(self._on_oauth_toggled)
         provider_form.addRow("", self._oauth_cb)
+
+        self._codex_setup_btn = QPushButton("Setup Codex")
+        self._codex_setup_btn.setVisible(self._config.provider.name == "codex")
+        self._codex_setup_btn.clicked.connect(self._on_setup_codex)
+        provider_form.addRow("", self._codex_setup_btn)
 
         self._api_base_edit = QLineEdit(self._config.provider.api_base)
         self._api_base_edit.setPlaceholderText(t("settings.custom_endpoint_placeholder"))
@@ -390,7 +498,6 @@ class SettingsDialog(QDialog):
         gen_form.addRow(t("settings.context_window_label"), self._context_spin)
 
         return gen_group
-
     def _build_behavior_group(self) -> QGroupBox:
         """Build the Behavior settings group box."""
         behavior_group = QGroupBox(t("settings.behavior_group"))
@@ -403,6 +510,29 @@ class SettingsDialog(QDialog):
         self._auto_save_cb = QCheckBox(t("settings.auto_save"))
         self._auto_save_cb.setChecked(self._config.checkpoint_auto_save)
         behavior_form.addRow(self._auto_save_cb)
+
+        self._restore_sessions_cb = QCheckBox("Restore previous chats on startup")
+        self._restore_sessions_cb.setChecked(self._config.restore_sessions_on_start)
+        self._restore_sessions_cb.setToolTip("Disable this when large analysis sessions make the panel slow to open.")
+        behavior_form.addRow(self._restore_sessions_cb)
+
+        self._dont_auto_load_cb = QCheckBox("Don't auto-load chats (show a placeholder, pick from the sidebar)")
+        self._dont_auto_load_cb.setChecked(self._config.dont_auto_load_chats)
+        self._dont_auto_load_cb.setToolTip(
+            "List saved chats in the sidebar but don't open any on startup.\n"
+            "Rikugan opens to a placeholder; selecting a chat loads it on demand."
+        )
+        behavior_form.addRow(self._dont_auto_load_cb)
+
+        storage_row = QHBoxLayout()
+        self._session_storage_edit = QLineEdit(self._config.session_storage_dir)
+        self._session_storage_edit.setPlaceholderText("Default: Rikugan config/checkpoints")
+        storage_row.addWidget(self._session_storage_edit, 1)
+        self._session_storage_btn = QPushButton("Browse")
+        self._session_storage_btn.setFixedWidth(70)
+        self._session_storage_btn.clicked.connect(self._choose_session_storage_dir)
+        storage_row.addWidget(self._session_storage_btn)
+        behavior_form.addRow("Session storage:", storage_row)
 
         self._explore_turns_spin = QSpinBox()
         self._explore_turns_spin.setRange(5, 500)
@@ -532,9 +662,6 @@ class SettingsDialog(QDialog):
         self._api_key_edit.setText(self._config.provider.api_key)
         self._api_base_edit.setText(self._config.provider.api_base)
         self._model_combo.setCurrentText(self._config.provider.model)
-        self._temp_spin.setValue(self._config.provider.temperature)
-        self._max_tokens_spin.setValue(self._config.provider.max_tokens)
-        self._context_spin.setValue(self._config.provider.context_window)
         self._model_restore_hint = self._config.provider.model.strip()
 
         # Auto-fill API base for providers that need it
@@ -543,10 +670,13 @@ class SettingsDialog(QDialog):
 
         # OAuth checkbox only visible for Anthropic
         self._oauth_cb.setVisible(provider == "anthropic")
+        self._codex_setup_btn.setVisible(provider == "codex")
 
         # Update placeholder
         if provider == "anthropic":
             self._api_key_edit.setPlaceholderText(t("settings.api_key_placeholder_oauth"))
+        elif provider == "codex":
+            self._api_key_edit.setPlaceholderText("Managed by Codex OAuth")
         elif provider == "ollama":
             self._api_key_edit.setPlaceholderText(t("settings.api_key_placeholder_local"))
         elif provider in ("openai_compat",) or is_custom:
@@ -562,6 +692,21 @@ class SettingsDialog(QDialog):
         self._update_auth_status()
         self._fetch_models()
 
+    def _on_setup_codex(self) -> None:
+        dlg = _CodexSetupDialog(parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._update_auth_status()
+            self._fetch_models()
+
+    def _choose_session_storage_dir(self) -> None:
+        path = QFileDialog.getExistingDirectory(
+            self,
+            "Choose Session Storage Directory",
+            self._session_storage_edit.text().strip() or self._config.checkpoints_dir,
+        )
+        if path:
+            self._session_storage_edit.setText(path)
+
     def _on_oauth_toggled(self, checked: bool) -> None:
         """Handle the OAuth checkbox toggle."""
         if checked and not self._config.oauth_consent_accepted:
@@ -575,10 +720,8 @@ class SettingsDialog(QDialog):
                 self._oauth_cb.blockSignals(False)
                 return
         # Update consent and refresh auth status
-        from ..providers.auth_cache import invalidate_cache, set_keychain_consent
-
-        set_keychain_consent(checked)
-        invalidate_cache()
+        apply_keychain_consent(checked)
+        invalidate_auth_cache()
         self._update_auth_status()
 
     # --- Auth status ---
@@ -593,9 +736,20 @@ class SettingsDialog(QDialog):
         base = self._api_base_edit.text().strip()
 
         try:
-            provider = self._registry.create(provider_name, api_key=explicit_key, api_base=base)
-            label, status_type = provider.auth_status()
-            self._resolved_token = provider.api_key
+            if provider_name == "codex":
+                from ..providers.codex_provider import codex_auth_status
+
+                label, status_type = codex_auth_status()
+                self._resolved_token = ""
+            else:
+                provider = self._registry.create(
+                    provider_name,
+                    api_key=explicit_key,
+                    api_base=base,
+                    **self._provider_extra_for(provider_name),
+                )
+                label, status_type = provider.auth_status()
+                self._resolved_token = provider.api_key
         except Exception as e:
             log_debug(f"Auth status check failed for {provider_name}: {e}")
             label, status_type = "", "none"
@@ -614,6 +768,7 @@ class SettingsDialog(QDialog):
         else:
             self._auth_status.setText("")
             self._auth_status.setStyleSheet("")
+        self._codex_setup_btn.setVisible(provider_name == "codex" and status_type != "ok")
 
     # --- Model fetching ---
 
@@ -628,7 +783,7 @@ class SettingsDialog(QDialog):
 
         self._model_status.setText("Fetching...")
         self._fetch_btn.setEnabled(False)
-        self._fetcher.fetch(provider, key, base)
+        self._fetcher.fetch(provider, key, base, self._provider_extra_for(provider))
 
     def _on_models_ready(self, models: list) -> None:
         self._fetch_btn.setEnabled(True)
@@ -662,27 +817,18 @@ class SettingsDialog(QDialog):
             self._model_status.setText(t("settings.type_model_manually"))
             self._model_status.setStyleSheet(maybe_host_stylesheet("color: #808080; font-size: 10px;"))
 
-        # Auto-fill generation defaults based on selected model
-        self._update_generation_defaults()
-
     def _on_fetch_error(self, error: str) -> None:
         self._fetch_btn.setEnabled(True)
         self._model_status.setText(error)
         self._model_status.setStyleSheet(maybe_host_stylesheet("color: #f44747; font-size: 10px;"))
         self._model_restore_hint = ""
 
-    def _update_generation_defaults(self) -> None:
-        model_id = self._get_selected_model_id()
-        for m in self._fetched_models:
-            if m.id == model_id:
-                # Only apply model defaults when the user selected a
-                # different model.  If the model matches the saved config,
-                # the user may have intentionally customized context_window
-                # — don't overwrite it with the model's default.
-                if model_id != self._config.provider.model:
-                    self._context_spin.setValue(m.context_window)
-                self._max_tokens_spin.setValue(min(m.max_output_tokens, 16384))
-                break
+    def _provider_extra_for(self, provider: str) -> dict[str, Any]:
+        if self._config.is_custom_provider(provider):
+            return dict(self._config.custom_providers.get(provider, {}))
+        if provider == self._config.provider.name:
+            return dict(self._config.provider.extra or {})
+        return {}
 
     def _get_selected_model_id(self) -> str:
         idx = self._model_combo.currentIndex()
@@ -712,11 +858,12 @@ class SettingsDialog(QDialog):
         # Snapshot current provider settings before switching
         self._sync_config_from_ui()
         # Register in config and registry
-        self._config.add_custom_provider(name)
+        self._config.add_custom_provider(name, dlg.provider_settings())
         self._registry.register_custom_providers([name])
         # Initialize settings for the new provider
         self._config.switch_provider(name)
         self._config.provider.api_base = api_base
+        self._config.provider.extra = dlg.provider_settings()
         # Rebuild combo and select the new provider
         self._provider_combo.currentTextChanged.disconnect(self._on_provider_changed)
         self._populate_provider_combo()
@@ -739,12 +886,13 @@ class SettingsDialog(QDialog):
 
     def _sync_config_from_ui(self) -> None:
         """Copy current UI values into config (without accepting the dialog)."""
+        provider_name = self._config.provider.name
         self._config.provider.model = self._get_selected_model_id()
         self._config.provider.api_key = self._api_key_edit.text().strip()
         self._config.provider.api_base = self._api_base_edit.text().strip()
-        self._config.provider.temperature = self._temp_spin.value()
-        self._config.provider.max_tokens = self._max_tokens_spin.value()
-        self._config.provider.context_window = self._context_spin.value()
+        if self._config.is_custom_provider(provider_name):
+            self._config.provider.extra = dict(self._config.custom_providers.get(provider_name, {}))
+            self._config.custom_providers[provider_name] = dict(self._config.provider.extra)
 
     # --- Accept ---
 
@@ -816,11 +964,11 @@ class SettingsDialog(QDialog):
         # ONLY save what the user explicitly typed — never save auto-resolved OAuth tokens
         self._config.provider.api_key = self._api_key_edit.text().strip()
         self._config.provider.api_base = self._api_base_edit.text().strip()
-        self._config.provider.temperature = self._temp_spin.value()
-        self._config.provider.max_tokens = self._max_tokens_spin.value()
-        self._config.provider.context_window = self._context_spin.value()
         self._config.auto_context = self._auto_context_cb.isChecked()
         self._config.checkpoint_auto_save = self._auto_save_cb.isChecked()
+        self._config.restore_sessions_on_start = self._restore_sessions_cb.isChecked()
+        self._config.dont_auto_load_chats = self._dont_auto_load_cb.isChecked()
+        self._config.session_storage_dir = self._session_storage_edit.text().strip()
         self._config.exploration_turn_limit = self._explore_turns_spin.value()
         self._config.normal_turn_limit = self._normal_turns_spin.value()
         self._config.max_retries = self._max_retries_spin.value()
@@ -828,6 +976,9 @@ class SettingsDialog(QDialog):
         self._config.preserve_context = self._preserve_context_cb.isChecked()
         self._config.oauth_consent_accepted = self._oauth_cb.isChecked()
         self._config.language = self._language_combo.currentData() or "en"
+        if self._config.is_custom_provider(self._config.provider.name):
+            self._config.provider.extra = dict(self._config.custom_providers.get(self._config.provider.name, {}))
+            self._config.custom_providers[self._config.provider.name] = dict(self._config.provider.extra)
 
         # --- API key encryption handling ---
         wants_encrypt = self._encrypt_keys_cb.isChecked()

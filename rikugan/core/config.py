@@ -15,8 +15,6 @@ from ..constants import (
     CONFIG_FILE_NAME,
     CONFIG_SCHEMA_VERSION,
     DEFAULT_CONTEXT_WINDOW,
-    DEFAULT_MAX_TOKENS,
-    DEFAULT_TEMPERATURE,
     MCP_CONFIG_FILE,
     SKILLS_DIR_NAME,
 )
@@ -34,8 +32,6 @@ class ProviderConfig:
     model: str = "claude-sonnet-4-20250514"
     api_key: str = ""
     api_base: str = ""
-    temperature: float = DEFAULT_TEMPERATURE
-    max_tokens: int = DEFAULT_MAX_TOKENS
     context_window: int = DEFAULT_CONTEXT_WINDOW
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -48,6 +44,11 @@ class RikuganConfig:
     auto_context: bool = True
     plan_mode_default: bool = False
     checkpoint_auto_save: bool = True
+    restore_sessions_on_start: bool = True
+    # When True, saved chats are listed in the sidebar but none is opened on
+    # startup — a placeholder is shown until the user picks or creates one.
+    dont_auto_load_chats: bool = False
+    session_storage_dir: str = ""
     approve_mutations: bool = False  # require approval for mutating tools (rename, retype, etc.)
     exploration_turn_limit: int = 100  # max turns in exploration phase before forcing transition
     normal_turn_limit: int = 100  # max turns in normal mode before stopping
@@ -93,6 +94,8 @@ class RikuganConfig:
 
     @property
     def checkpoints_dir(self) -> str:
+        if self.session_storage_dir:
+            return os.path.abspath(os.path.expanduser(self.session_storage_dir))
         return os.path.join(self._config_dir, "checkpoints")
 
     @property
@@ -106,10 +109,6 @@ class RikuganConfig:
     def validate(self) -> list[str]:
         """Validate config values. Returns list of error messages (empty = valid)."""
         errors: list[str] = []
-        if not (0.0 <= self.provider.temperature <= 2.0):
-            errors.append(f"temperature {self.provider.temperature} out of range [0, 2]")
-        if self.provider.max_tokens <= 0:
-            errors.append(f"max_tokens must be positive, got {self.provider.max_tokens}")
         if self.provider.context_window <= 0:
             errors.append(f"context_window must be positive, got {self.provider.context_window}")
         if not (1 <= self.max_retries <= 10):
@@ -130,8 +129,6 @@ class RikuganConfig:
             for err in errors:
                 log_error(f"Config validation: {err}")
             # Clamp to valid ranges rather than refusing to save
-            self.provider.temperature = max(0.0, min(2.0, self.provider.temperature))
-            self.provider.max_tokens = max(1, self.provider.max_tokens)
             self.provider.context_window = max(1024, self.provider.context_window)
             self.max_retries = max(1, min(10, self.max_retries))
 
@@ -159,13 +156,13 @@ class RikuganConfig:
         else:
             d["encryption"] = {"enabled": False}
 
-        with open(self.config_path, "w") as f:
+        with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(d, f, indent=2)
 
     def load(self) -> None:
         if not os.path.exists(self.config_path):
             return
-        with open(self.config_path) as f:
+        with open(self.config_path, encoding="utf-8") as f:
             data = json.load(f)
         # Schema version check (for future migrations)
         _stored_version = data.pop("schema_version", 0)
@@ -187,6 +184,9 @@ class RikuganConfig:
             "auto_context",
             "plan_mode_default",
             "checkpoint_auto_save",
+            "restore_sessions_on_start",
+            "dont_auto_load_chats",
+            "session_storage_dir",
             "approve_mutations",
             "exploration_turn_limit",
             "normal_turn_limit",
@@ -248,9 +248,8 @@ class RikuganConfig:
             "model": self.provider.model,
             "api_key": self.provider.api_key,
             "api_base": self.provider.api_base,
-            "temperature": self.provider.temperature,
-            "max_tokens": self.provider.max_tokens,
             "context_window": self.provider.context_window,
+            "extra": self.provider.extra,
         }
 
     def switch_provider(self, new_name: str) -> None:
@@ -267,21 +266,19 @@ class RikuganConfig:
             self.provider.model = saved.get("model", "")
             self.provider.api_key = saved.get("api_key", "")
             self.provider.api_base = saved.get("api_base", "")
-            self.provider.temperature = saved.get("temperature", DEFAULT_TEMPERATURE)
-            self.provider.max_tokens = saved.get("max_tokens", DEFAULT_MAX_TOKENS)
             self.provider.context_window = saved.get("context_window", DEFAULT_CONTEXT_WINDOW)
+            self.provider.extra = saved.get("extra", {})
         else:
             # Fresh provider — clear key/base, keep defaults
             self.provider.api_key = ""
             self.provider.api_base = ""
             self.provider.model = ""
-            self.provider.temperature = DEFAULT_TEMPERATURE
-            self.provider.max_tokens = DEFAULT_MAX_TOKENS
             self.provider.context_window = DEFAULT_CONTEXT_WINDOW
+            self.provider.extra = dict(self.custom_providers.get(new_name, {}))
 
-    def add_custom_provider(self, name: str) -> None:
+    def add_custom_provider(self, name: str, settings: dict[str, Any] | None = None) -> None:
         """Register a new custom OpenAI-compatible provider name."""
-        self.custom_providers[name] = {}
+        self.custom_providers[name] = settings or {}
 
     def remove_custom_provider(self, name: str) -> None:
         """Remove a custom provider and its saved settings."""

@@ -29,7 +29,7 @@ from .i18n import t
 _MAX_ARGS_DISPLAY = 2000
 _MAX_RESULT_DISPLAY = 3000
 _TOOL_PREVIEW_LINES = 3
-_MUTED_TEXT = "#808080"
+_MUTED_TEXT = "#a8a8a8"
 _TOOL_BG = "#252526"
 _TOOL_BORDER = "#3c3c3c"
 
@@ -404,7 +404,7 @@ def _make_preview_label(source=None) -> QLabel:
     lbl.setWordWrap(True)
     lbl.setStyleSheet(
         host_stylesheet(
-            "color: #6a6a7a; font-family: monospace; font-size: 10px; margin-left: 28px;",
+            "color: #9a9a9a; font-family: monospace; font-size: 10px; margin-left: 28px;",
             f"color: {_MUTED_TEXT}; {_native_text_style(size=10, monospace=True)}",
         )
     )
@@ -557,7 +557,7 @@ class ToolCallWidget(QFrame):
         self._summary_label = QLabel("")
         self._summary_label.setStyleSheet(
             host_stylesheet(
-                "color: #808080; font-size: 11px; margin-left: 6px;",
+                "color: #a8a8a8; font-size: 11px; margin-left: 6px;",
                 f"color: {_MUTED_TEXT}; {_native_text_style(size=11)}",
             )
         )
@@ -589,6 +589,7 @@ class ToolCallWidget(QFrame):
         self._args_label = QLabel()
         self._args_label.setObjectName("tool_content")
         self._args_label.setWordWrap(True)
+        self._args_label.setTextFormat(Qt.TextFormat.PlainText)
         self._args_label.setTextInteractionFlags(
             qt_flags(
                 Qt.TextInteractionFlag.TextSelectableByMouse,
@@ -600,7 +601,7 @@ class ToolCallWidget(QFrame):
         self._result_header = QLabel(t("tool.result_header"))
         self._result_header.setStyleSheet(
             host_stylesheet(
-                "color: #808080; font-size: 10px; font-weight: bold;",
+                "color: #a8a8a8; font-size: 10px; font-weight: bold;",
                 f"color: {_MUTED_TEXT}; {_native_text_style(size=10, bold=True)}",
             )
         )
@@ -610,6 +611,7 @@ class ToolCallWidget(QFrame):
         self._result_label = QLabel()
         self._result_label.setObjectName("tool_content")
         self._result_label.setWordWrap(True)
+        self._result_label.setTextFormat(Qt.TextFormat.PlainText)
         self._result_label.setTextInteractionFlags(
             qt_flags(
                 Qt.TextInteractionFlag.TextSelectableByMouse,
@@ -632,10 +634,12 @@ class ToolCallWidget(QFrame):
         _SharedSpinnerTimer.get().unregister(self)
 
     def _toggle(self) -> None:
+        self.setUpdatesEnabled(False)
         self._expanded = not self._expanded
         self._detail_widget.setVisible(self._expanded)
         self._preview_label.setVisible(not self._expanded and bool(self._args_text))
         self._toggle_btn.setText("\u25bc" if self._expanded else "\u25b6")
+        self.setUpdatesEnabled(True)
 
     def set_arguments(self, args_text: str) -> None:
         self._args_text = args_text
@@ -784,7 +788,7 @@ class ToolBatchWidget(QFrame):
         self._count_label = QLabel("")
         self._count_label.setStyleSheet(
             host_stylesheet(
-                "color: #808080; font-size: 11px; margin-left: 6px;",
+                "color: #a8a8a8; font-size: 11px; margin-left: 6px;",
                 f"color: {_MUTED_TEXT}; {_native_text_style(size=11)}",
             )
         )
@@ -834,7 +838,7 @@ class ToolBatchWidget(QFrame):
         entry = QLabel(f"#{self._count}: {summary}" if summary else f"#{self._count}")
         entry.setStyleSheet(
             host_stylesheet(
-                "color: #808080; font-family: monospace; font-size: 10px;",
+                "color: #a8a8a8; font-family: monospace; font-size: 10px;",
                 f"color: {_MUTED_TEXT}; {_native_text_style(size=10, monospace=True)}",
             )
         )
@@ -896,10 +900,12 @@ class ToolBatchWidget(QFrame):
             self._status_label.setText(f"{done}/{self._count}")
 
     def _toggle(self) -> None:
+        self.setUpdatesEnabled(False)
         self._expanded = not self._expanded
         self._detail_widget.setVisible(self._expanded)
         self._preview_label.setVisible(not self._expanded and bool(self._first_args))
         self._toggle_btn.setText("\u25bc" if self._expanded else "\u25b6")
+        self.setUpdatesEnabled(True)
 
     @property
     def tool_name(self) -> str:
@@ -947,8 +953,8 @@ class ToolGroupWidget(QFrame):
         self._label = QLabel(t("tool.tools_called_label", n=0))
         self._label.setStyleSheet(
             host_stylesheet(
-                "color: #808080; font-size: 11px; font-weight: bold;",
-                f"color: {_MUTED_TEXT}; {_native_text_style(size=11, bold=True)}",
+                "color: #c8c8c8; font-size: 11px; font-weight: bold;",
+                f"color: #c8c8c8; {_native_text_style(size=11, bold=True)}",
             )
         )
         header_layout.addWidget(self._label, 1)
@@ -1018,9 +1024,11 @@ class ToolGroupWidget(QFrame):
             )
 
     def _toggle(self) -> None:
+        self.setUpdatesEnabled(False)
         self._expanded = not self._expanded
         self._body.setVisible(self._expanded)
         self._toggle_btn.setText("\u25bc" if self._expanded else "\u25b6")
+        self.setUpdatesEnabled(True)
 
     @property
     def count(self) -> int:
@@ -1188,7 +1196,7 @@ class ToolApprovalWidget(QFrame):
         self._info = QLabel(t("execute_python.code_info", lines=len(code_lines)))
         self._info.setStyleSheet(
             host_stylesheet(
-                "color: #808080; font-size: 10px;",
+                "color: #a8a8a8; font-size: 10px;",
                 f"color: {_MUTED_TEXT}; {_native_text_style(size=10)}",
             )
         )
@@ -1291,7 +1299,7 @@ class ToolApprovalWidget(QFrame):
         self._disable_buttons()
         self._allow_btn.setText("  " + t("execute_python.allowed") + "  ")
         allowed_css = (
-            "QToolButton { background: #1a5c2d; color: #808080; border: none; "
+            "QToolButton { background: #1a5c2d; color: #d4d4d4; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; }"
         )
         self._allow_btn.setStyleSheet(host_stylesheet(allowed_css, allowed_css))
@@ -1302,7 +1310,7 @@ class ToolApprovalWidget(QFrame):
         self._disable_buttons()
         self._always_btn.setText("  " + t("execute_python.always_allowed") + "  ")
         always_allowed_css = (
-            "QToolButton { background: #1a5c2d; color: #808080; border: none; "
+            "QToolButton { background: #1a5c2d; color: #d4d4d4; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; }"
         )
         self._always_btn.setStyleSheet(host_stylesheet(always_allowed_css, always_allowed_css))
@@ -1313,7 +1321,7 @@ class ToolApprovalWidget(QFrame):
         self._disable_buttons()
         self._deny_btn.setText("  " + t("execute_python.denied") + "  ")
         denied_css = (
-            "QToolButton { background: #6e1a12; color: #808080; border: none; "
+            "QToolButton { background: #6e1a12; color: #d4d4d4; border: none; "
             "border-radius: 4px; padding: 4px 16px; font-size: 11px; }"
         )
         self._deny_btn.setStyleSheet(host_stylesheet(denied_css, denied_css))
